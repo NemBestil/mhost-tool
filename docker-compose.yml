@@ -8,6 +8,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: file:/app/data/mhost.db
+      ADMIN_USERNAME: ${SERVICE_USER_APP}
+      ADMIN_PASSWORD: ${SERVICE_PASSWORD_APP}
     volumes:
       - ./uploads:/app/uploads
       - ./data:/app/data
