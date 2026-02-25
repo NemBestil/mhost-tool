@@ -1,0 +1,212 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum ServerType {
+  CPANEL_WHM
+  PLESK
+}
+
+enum MonitoringLevel {
+  NONE
+  NORMAL
+  HIGH
+}
+
+enum MonitoringStatus {
+  UP
+  DOWN
+  UNKNOWN
+}
+
+enum MonitoringNotificationType {
+  EMAIL
+  PUSHOVER
+  WEBHOOK
+}
+
+enum MonitoringCriticality {
+  NORMAL
+  CRITICAL
+}
+
+model Server {
+  id            String                  @id @default(cuid())
+  name          String
+  hostname      String
+  sshPort       Int                     @default(22)
+  sshPrivateKey String
+  serverType    ServerType
+  cpuCores      Int?
+  ram           Int?
+  sshIsValid    Boolean                 @default(false)
+  disks         ServerDisk[]
+  installations WordPressInstallation[]
+
+  @@map("servers")
+}
+
+model WordPressInstallation {
+  id                           String            @id @default(cuid())
+  serverId                     String
+  server                       Server            @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  unixUsername                 String
+  installationPath             String
+  siteTitle                    String
+  siteDescription              String?
+  siteUrl                      String
+  currentCve                   Float? // 0-10, null = unknown
+  timezone                     String?
+  usesServerCron               Boolean           @default(false)
+  adminEmail                   String?
+  phpVersion                   String?
+  phpMemoryLimit               String?
+  lastScanAt                   DateTime?
+  monitoringLevel              MonitoringLevel   @default(NONE)
+  monitoringStatus             MonitoringStatus  @default(UNKNOWN)
+  monitoringCurrentStatusSince DateTime?
+  monitoringLastCheckedAt      DateTime?
+  monitoringTestWpLogin        Boolean           @default(false)
+  monitoringFrontpageStatusMin Int               @default(200)
+  monitoringFrontpageStatusMax Int               @default(299)
+  monitoringFailedAttempts     Int               @default(0)
+  plugins                      WordPressPlugin[]
+  themes                       WordPressTheme[]
+  monitoringEvents             MonitoringEvent[]
+
+  @@unique([serverId, installationPath])
+  @@map("wordpress_installations")
+}
+
+model WordPressPlugin {
+  id             String                @id @default(cuid())
+  installationId String
+  installation   WordPressInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  name           String
+  title          String?
+  slug           String
+  version        String
+  isEnabled      Boolean               @default(false)
+  autoUpdate     Boolean               @default(false)
+  source         String                @default("unknown") // "wordpress.org", "external", or "unknown"
+  latestVersion  String?
+  mainFilePath   String? // Path to main plugin file, e.g., "akismet/akismet.php"
+
+  @@unique([installationId, slug])
+  @@map("wordpress_plugins")
+}
+
+model WordPressTheme {
+  id             String                @id @default(cuid())
+  installationId String
+  installation   WordPressInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  name           String
+  title          String?
+  slug           String
+  version        String
+  isEnabled      Boolean               @default(false)
+  autoUpdate     Boolean               @default(false)
+  isActiveChild  Boolean               @default(false) // Theme is not directly active, a child theme is using it
+  source         String                @default("unknown") // "wordpress.org", "external", or "unknown"
+  latestVersion  String?
+
+  @@unique([installationId, slug])
+  @@map("wordpress_themes")
+}
+
+model UploadedWordPressPlugin {
+  id               String   @id @default(cuid())
+  name             String
+  title            String?
+  slug             String
+  version          String
+  archivePath      String
+  originalFilename String
+  uploadedAt       DateTime @default(now())
+  isLatest         Boolean  @default(false)
+
+  @@unique([name, version])
+  @@map("uploaded_wordpress_plugins")
+}
+
+model UploadedWordPressTheme {
+  id               String   @id @default(cuid())
+  name             String
+  title            String?
+  slug             String
+  version          String
+  archivePath      String
+  originalFilename String
+  uploadedAt       DateTime @default(now())
+  isLatest         Boolean  @default(false)
+
+  @@unique([name, version])
+  @@map("uploaded_wordpress_themes")
+}
+
+model ServerDisk {
+  id           String @id @default(cuid())
+  serverId     String
+  server       Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  mountPoint   String
+  capacity     BigInt
+  usedCapacity BigInt
+
+  @@map("server_disks")
+}
+
+model Option {
+  key   String @id
+  value String
+
+  @@map("options")
+}
+
+model MonitoringConfig {
+  id                  Int                            @id
+  defaultNewSiteLevel MonitoringLevel                @default(NONE)
+  notificationTargets MonitoringNotificationTarget[]
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+
+  @@map("monitoring_config")
+}
+
+model MonitoringNotificationTarget {
+  id              String                     @id @default(cuid())
+  configId        Int                        @default(1)
+  config          MonitoringConfig           @relation(fields: [configId], references: [id], onDelete: Cascade)
+  type            MonitoringNotificationType
+  value           String
+  pushoverUserKey String?
+  minAttempts     Int                        @default(1)
+  criticality     MonitoringCriticality?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@unique([type, value])
+  @@map("monitoring_notification_targets")
+}
+
+model MonitoringEvent {
+  id             String                @id @default(cuid())
+  installationId String
+  installation   WordPressInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  status         MonitoringStatus
+  occurredAt     DateTime              @default(now())
+  details        String?
+
+  @@index([installationId, occurredAt])
+  @@map("monitoring_events")
+}
