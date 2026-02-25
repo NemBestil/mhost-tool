@@ -27,7 +27,8 @@ export default defineNuxtConfig({
     scheduledTasks: {
       '* * * * *': ['ping-sites-high'],
       '*/2 * * * *': ['ping-sites-normal'],
-      '0 3 * * *': ['cleanup-user-sessions']
+      '0 3 * * *': ['cleanup-user-sessions'],
+      '0 5 * * *': ['scan-all-servers-daily']
     }
   }
 })

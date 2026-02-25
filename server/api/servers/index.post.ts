@@ -1,5 +1,6 @@
 import { prisma } from '#server/utils/db'
 import { validateServerPayload, type ServerBody } from '#server/utils/validation'
+import { runServerScanById } from '#server/utils/serverScan'
 
 type CreateServerBody = ServerBody
 
@@ -16,6 +17,10 @@ export default defineEventHandler(async (event) => {
       serverType,
       sshIsValid: true
     },
+  })
+
+  void runServerScanById(server.id).catch((err) => {
+    console.error(`Auto scan failed for server ${server.id}:`, err)
   })
 
   return server
