@@ -142,7 +142,7 @@ export const usePackageUploadStore = defineStore('package-upload', () => {
     }
 
     try {
-      await $fetch('/api/packages/upload', {
+      await useApiClient()('/packages/upload', {
         method: 'POST',
         body: formData
       })

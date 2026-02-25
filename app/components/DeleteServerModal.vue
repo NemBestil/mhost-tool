@@ -43,7 +43,7 @@ const isDeleting = ref(false)
 const onConfirm = async () => {
   isDeleting.value = true
   try {
-    await $fetch(`/api/servers/${props.server.id}`, {
+    await useApiClient()(`/servers/${props.server.id}`, {
       method: 'DELETE'
     })
     emit('deleted')

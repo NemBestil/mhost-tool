@@ -1,22 +1,5 @@
 <script lang="ts" setup>
-import type { DropdownMenuItem } from '@nuxt/ui'
-
-const route = useRoute();
-
-const items = [
-  [
-    {
-      label: 'New mail',
-      icon: 'i-lucide-send',
-      to: '/inbox'
-    },
-    {
-      label: 'New customer',
-      icon: 'i-lucide-user-plus',
-      to: '/customers'
-    }
-  ]
-] satisfies DropdownMenuItem[][]
+const route = useRoute()
 </script>
 
 <template>

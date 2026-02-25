@@ -73,7 +73,7 @@ type ServerList = TypedInternalResponse<'/api/servers/list', unknown, 'get'>
 
 const {data: servers, status, refetch: refetchServers} = useQuery<ServerList>({
   queryKey: ['servers-list'],
-  queryFn: () => $fetch('/api/servers/list')
+  queryFn: () => useApiClient()('/servers/list')
 })
 
 type Server = NonNullable<typeof servers.value>[number]

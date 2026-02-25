@@ -140,7 +140,7 @@ const toast = useToast()
 
 const {data, refetch} = useQuery<MainSettingsResponse>({
   queryKey: ['main-settings'],
-  queryFn: () => $fetch('/api/settings/main')
+  queryFn: () => useApiClient()('/settings/main')
 })
 
 const form = reactive<SmtpForm>({
@@ -215,7 +215,7 @@ const saveSettings = async () => {
   isSaving.value = true
   fieldErrors.value = {}
   try {
-    await $fetch('/api/settings/main', {
+    await useApiClient()('/settings/main', {
       method: 'PUT',
       body: {
         smtp: {
@@ -259,7 +259,7 @@ const sendTestEmail = async () => {
   isTesting.value = true
   fieldErrors.value = {}
   try {
-    await $fetch('/api/settings/smtp-test', {
+    await useApiClient()('/settings/smtp-test', {
       method: 'POST',
       body: {
         smtp: {

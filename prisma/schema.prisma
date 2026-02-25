@@ -173,6 +173,16 @@ model Option {
   @@map("options")
 }
 
+model UserSession {
+  token     String   @id
+  ipAddress String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
 model MonitoringConfig {
   id                  Int                            @id
   defaultNewSiteLevel MonitoringLevel                @default(NONE)

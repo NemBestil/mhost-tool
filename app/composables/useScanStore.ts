@@ -117,7 +117,7 @@ export const useScanStore = defineStore('scan', () => {
     completedScans.value.delete(serverId)
 
     try {
-      await $fetch('/api/sites/scan', {
+      await useApiClient()('/sites/scan', {
         method: 'POST',
         body: { serverId }
       })

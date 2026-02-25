@@ -220,7 +220,7 @@ const {
   refetch: refetchSites
 } = useQuery<{ sites: SiteWithVersion[], latestVersion: string | null }>({
   queryKey: sitesQueryKey,
-  queryFn: () => $fetch(`/api/packages/${props.packageDetails!.kind}/${encodeURIComponent(props.packageDetails!.slug)}/sites`),
+  queryFn: () => useApiClient()(`/packages/${props.packageDetails!.kind}/${encodeURIComponent(props.packageDetails!.slug)}/sites`),
   enabled: queryEnabled,
   placeholderData: keepPreviousData
 })
@@ -284,7 +284,7 @@ const queueUpdates = async (targetSites: SiteWithVersion[]) => {
   isProcessing.value = true
   currentAction.value = 'update'
   try {
-    await $fetch('/api/packages/jobs', {
+    await useApiClient()('/packages/jobs', {
       method: 'POST',
       body: {
         jobs: targetSites.map(site => ({
@@ -347,11 +347,11 @@ const runBatchAction = async (operation: PackageAction, targetSites: SiteWithVer
   isProcessing.value = true
   currentAction.value = operation
   try {
-    const response = await $fetch<{
+    const response = await useApiClient()<{
       success: number
       failed: number
       skipped: number
-    }>('/api/packages/actions', {
+    }>('/packages/actions', {
       method: 'POST',
       body: {
         actions: targetSites.map(site => ({

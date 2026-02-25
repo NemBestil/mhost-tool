@@ -37,13 +37,23 @@ jobs:
 
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAGS="${IMAGE_NAME}:${GITHUB_REF_NAME},${IMAGE_NAME}:latest"
+            VERSION="${GITHUB_REF_NAME#v}"
           else
             TAGS="${IMAGE_NAME}:main"
+            VERSION="main"
           fi
 
           echo "image_name=${IMAGE_NAME}" >> "${GITHUB_OUTPUT}"
           echo "tags=${TAGS}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
+      - name: Update version in package.json
+        run: |
+          VERSION=${{ steps.prep.outputs.version }}
+          if [ "${VERSION}" = "main" ]; then
+            VERSION="0.0.0-main"
+          fi
+          npm version ${VERSION} --no-git-tag-version --allow-same-version
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:

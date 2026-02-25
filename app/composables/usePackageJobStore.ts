@@ -111,7 +111,7 @@ export const usePackageJobStore = defineStore('package-job', () => {
 
   const refreshStatus = async () => {
     try {
-      const snapshot = await $fetch<PackageJobProgress>('/api/packages/jobs/status')
+      const snapshot = await useApiClient()<PackageJobProgress>('/packages/jobs/status')
       const normalized = normalizeProgress(snapshot)
       if (!normalized) return
 

@@ -127,6 +127,6 @@ type DashboardOverview = {
 
 const { data: overview } = useQuery<DashboardOverview>({
   queryKey: ['dashboard-overview'],
-  queryFn: () => $fetch('/api/dashboard/overview')
+  queryFn: () => useApiClient()('/dashboard/overview')
 })
 </script>

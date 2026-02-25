@@ -256,7 +256,7 @@ const toast = useToast()
 
 const { data: config, status: configStatus, refetch: refetchConfig } = useQuery<MonitoringConfig>({
   queryKey: ['monitoring-config'],
-  queryFn: () => $fetch('/api/monitoring/config')
+  queryFn: () => useApiClient()('/monitoring/config')
 })
 
 const monitoringLevelOptions = [
@@ -335,7 +335,7 @@ const testPushoverTarget = async (index: number) => {
 
   isTestingPushover.value[index] = true
   try {
-    await $fetch('/api/monitoring/test-notification', {
+    await useApiClient()('/monitoring/test-notification', {
       method: 'POST',
       body: {
         token: target.token.trim(),
@@ -434,7 +434,7 @@ const saveConfiguration = async () => {
 
   isSavingConfig.value = true
   try {
-    await $fetch('/api/monitoring/config', {
+    await useApiClient()('/monitoring/config', {
       method: 'PUT',
       body: {
         defaultNewSiteLevel: defaultNewSiteLevel.value,

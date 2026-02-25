@@ -698,17 +698,17 @@ const {data: packages, refetch: refetchPackages} = useQuery<{
   themes: UploadedPackageRow[]
 }>({
   queryKey: ['packages-list'],
-  queryFn: () => $fetch('/api/packages/list')
+  queryFn: () => useApiClient()('/packages/list')
 })
 
 // Fetch installed plugins and themes
 const {data: installedPluginsData, refetch: refetchInstalledPlugins} = useQuery<{ plugins: InstalledPackageRow[] }>({
   queryKey: ['installed-plugins'],
-  queryFn: () => $fetch('/api/packages/installed-plugins')
+  queryFn: () => useApiClient()('/packages/installed-plugins')
 })
 const {data: installedThemesData, refetch: refetchInstalledThemes} = useQuery<{ themes: InstalledPackageRow[] }>({
   queryKey: ['installed-themes'],
-  queryFn: () => $fetch('/api/packages/installed-themes')
+  queryFn: () => useApiClient()('/packages/installed-themes')
 })
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
@@ -1113,7 +1113,7 @@ const openVersionsModal = async (kind: PackageKind, name: string, title: string 
 const loadVersions = async () => {
   const response = await queryClient.fetchQuery({
     queryKey: ['package-versions', activeVersionsKind.value, activeVersionsName.value],
-    queryFn: () => $fetch<VersionsResponse>(`/api/packages/${activeVersionsKind.value}/${encodeURIComponent(activeVersionsName.value)}/versions`),
+    queryFn: () => useApiClient()<VersionsResponse>(`/packages/${activeVersionsKind.value}/${encodeURIComponent(activeVersionsName.value)}/versions`),
     staleTime: 0
   })
   versions.value = response.versions
@@ -1139,7 +1139,7 @@ const queuePackageUpdates = async (kind: 'plugin' | 'theme', slug: string, insta
   }
 
   try {
-    await $fetch('/api/packages/jobs', {
+    await useApiClient()('/packages/jobs', {
       method: 'POST',
       body: {
         jobs: uniqueInstallationIds.map(installationId => ({
@@ -1170,7 +1170,7 @@ const deleteAllVersions = async (kind: PackageKind, name: string) => {
   const confirmed = window.confirm(`Delete all versions of "${name}"? This cannot be undone.`)
   if (!confirmed) return
 
-  await $fetch(`/api/packages/${kind}/${encodeURIComponent(name)}`, {
+  await useApiClient()(`/packages/${kind}/${encodeURIComponent(name)}`, {
     method: 'DELETE'
   })
 
@@ -1214,7 +1214,7 @@ const deleteSelectedVersions = async () => {
 
   isDeletingSelected.value = true
   try {
-    await $fetch(`/api/packages/${activeVersionsKind.value}/${encodeURIComponent(activeVersionsName.value)}/versions`, {
+    await useApiClient()(`/packages/${activeVersionsKind.value}/${encodeURIComponent(activeVersionsName.value)}/versions`, {
       method: 'DELETE',
       body: {
         ids: selectedVersionIds.value

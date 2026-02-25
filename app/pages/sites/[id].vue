@@ -266,7 +266,7 @@ const packageJobStore = usePackageJobStore()
 
 const { data: site, status } = useQuery<SiteDetails>({
   queryKey: ['site', siteId],
-  queryFn: () => $fetch(`/api/sites/${siteId}`)
+  queryFn: () => useApiClient()(`/sites/${siteId}`)
 })
 
 definePageMeta({
@@ -354,7 +354,7 @@ const getCveColor = (cve: number) => {
 
 const enqueueSitePackageUpdate = async (kind: 'plugin' | 'theme', slug: string, title: string) => {
   try {
-    await $fetch('/api/packages/jobs', {
+    await useApiClient()('/packages/jobs', {
       method: 'POST',
       body: {
         jobs: [

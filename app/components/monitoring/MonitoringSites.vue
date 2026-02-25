@@ -296,7 +296,7 @@ const queryClient = useQueryClient()
 
 const { data: sites, status: sitesStatus, refetch: refetchSites } = useQuery<MonitoringSite[]>({
   queryKey: ['monitoring-sites'],
-  queryFn: () => $fetch('/api/monitoring/sites/list'),
+  queryFn: () => useApiClient()('/monitoring/sites/list'),
 })
 
 const monitoringLevelOptions = [
@@ -486,7 +486,7 @@ const loadHistory = async (siteId: string) => {
   try {
     const response = await queryClient.fetchQuery({
       queryKey: ['monitoring-site-events', siteId],
-      queryFn: () => $fetch<{ events: MonitoringEvent[] }>(`/api/monitoring/sites/${siteId}/events`),
+      queryFn: () => useApiClient()<{ events: MonitoringEvent[] }>(`/monitoring/sites/${siteId}/events`),
       staleTime: 0
     })
     historyBySiteId.value[siteId] = response.events
@@ -508,7 +508,7 @@ const updateSiteMonitoringLevel = async (site: MonitoringSite, level: Monitoring
   updatingSiteLevel.value[site.id] = true
 
   try {
-    await $fetch(`/api/monitoring/sites/${site.id}/level`, {
+    await useApiClient()(`/monitoring/sites/${site.id}/level`, {
       method: 'PUT',
       body: {
         monitoringLevel: level
@@ -586,7 +586,7 @@ const saveSiteChecks = async (site: MonitoringSite) => {
 
   updatingSiteChecks.value[site.id] = true
   try {
-    const updated = await $fetch(`/api/monitoring/sites/${site.id}/config`, {
+    const updated = await useApiClient()(`/monitoring/sites/${site.id}/config`, {
       method: 'PUT',
       body: draft
     })
@@ -626,7 +626,7 @@ const applyBatchMonitoringLevel = async () => {
 
   isApplyingBatch.value = true
   try {
-    await $fetch('/api/monitoring/sites/batch-level', {
+    await useApiClient()('/monitoring/sites/batch-level', {
       method: 'POST',
       body: {
         siteIds,

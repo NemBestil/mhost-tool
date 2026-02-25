@@ -176,11 +176,11 @@ type ServerList = TypedInternalResponse<'/api/servers/list', unknown, 'get'>
 
 const {data: sites, status, refetch: refetchSites} = useQuery<SiteList>({
   queryKey: ['sites-list'],
-  queryFn: () => $fetch('/api/sites/list')
+  queryFn: () => useApiClient()('/sites/list')
 })
 const {data: servers} = useQuery<ServerList>({
   queryKey: ['servers-list'],
-  queryFn: () => $fetch('/api/servers/list')
+  queryFn: () => useApiClient()('/servers/list')
 })
 
 const table = useTemplateRef('table')
@@ -250,7 +250,7 @@ const confirmDelete = async () => {
 
   isDeleting.value = true
   try {
-    await $fetch('/api/sites/batch-delete', {
+    await useApiClient()('/sites/batch-delete', {
       method: 'POST',
       body: { siteIds }
     })

@@ -9,7 +9,7 @@ const scanStore = useScanStore()
 const isSlideoverOpen = ref(false)
 const { data: servers } = useQuery<GetServerList>({
   queryKey: ['servers-list'],
-  queryFn: () => $fetch('/api/servers/list')
+  queryFn: () => useApiClient()('/servers/list')
 })
 
 const props = defineProps({

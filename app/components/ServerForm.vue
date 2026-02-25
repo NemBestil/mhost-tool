@@ -45,7 +45,7 @@ const {
   error: fetchError
 } = useQuery<ServerDetails>({
   queryKey: ['server', props.id],
-  queryFn: () => $fetch(`/api/servers/${props.id}`),
+  queryFn: () => useApiClient()(`/servers/${props.id}`),
   enabled: computed(() => Boolean(props.id))
 })
 
@@ -72,9 +72,9 @@ async function onSubmit(event: FormSubmitEvent<ServerFormState>) {
 
   try {
     const method = props.id ? 'PUT' : 'POST'
-    const url = props.id ? `/api/servers/${props.id}` : '/api/servers'
+    const url = props.id ? `/servers/${props.id}` : '/servers'
 
-    await $fetch(url, {
+    await useApiClient()(url, {
       method,
       body: state
     })
