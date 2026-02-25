@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
 
   for (const [index, file] of files.entries()) {
     const originalFilename = file.filename || `file-${index + 1}.zip`
-    const tmpPath = join(tmpdir(), `nemwp-${uploadId}-${index}.zip`)
+    const tmpPath = join(tmpdir(), `mhost-${uploadId}-${index}.zip`)
 
     try {
       if (file.data.length > MAX_UPLOAD_BYTES) {

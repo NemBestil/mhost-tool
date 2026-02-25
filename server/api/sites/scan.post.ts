@@ -114,10 +114,10 @@ async function runScan(server: any, serverId: string) {
     // Ensure wp-cli is installed
     sendEvent('log', 'Checking wp-cli installation...')
     const wpCliSetupCmd = `
-      mkdir -p /opt/nemwp-cli && \
-      if [ ! -f /opt/nemwp-cli/wp-cli.phar ] || [ $(find /opt/nemwp-cli/wp-cli.phar -mtime +14 2>/dev/null | wc -l) -gt 0 ]; then
-        curl -sS -o /opt/nemwp-cli/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
-        chmod +x /opt/nemwp-cli/wp-cli.phar && \
+      mkdir -p /opt/mhost-cli && \
+      if [ ! -f /opt/mhost-cli/wp-cli.phar ] || [ $(find /opt/mhost-cli/wp-cli.phar -mtime +14 2>/dev/null | wc -l) -gt 0 ]; then
+        curl -sS -o /opt/mhost-cli/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+        chmod +x /opt/mhost-cli/wp-cli.phar && \
         echo "downloaded"
       else
         echo "exists"
@@ -186,13 +186,13 @@ async function runScan(server: any, serverId: string) {
         sendEvent('log', `Detected user: ${unixUser}`)
 
         // Get WordPress info using wp-cli
-        const wpInfoCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar option get blogname --skip-plugins --skip-themes 2>/dev/null'`
+        const wpInfoCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get blogname --skip-plugins --skip-themes 2>/dev/null'`
         const siteTitle = (await session.exec(wpInfoCmd, { timeoutMs: 30000 })).stdout.trim() || 'Unknown'
 
-        const wpDescCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar option get blogdescription --skip-plugins --skip-themes 2>/dev/null'`
+        const wpDescCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get blogdescription --skip-plugins --skip-themes 2>/dev/null'`
         const siteDescription = (await session.exec(wpDescCmd, { timeoutMs: 30000 })).stdout.trim() || null
 
-        const wpUrlCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar option get siteurl --skip-plugins --skip-themes 2>/dev/null'`
+        const wpUrlCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get siteurl --skip-plugins --skip-themes 2>/dev/null'`
         const siteUrl = (await session.exec(wpUrlCmd, { timeoutMs: 30000 })).stdout.trim() || ''
 
         if (!siteUrl) {
@@ -202,18 +202,18 @@ async function runScan(server: any, serverId: string) {
         }
 
         // Get meta information
-        const timezoneCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar option get timezone_string --skip-plugins --skip-themes 2>/dev/null'`
+        const timezoneCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get timezone_string --skip-plugins --skip-themes 2>/dev/null'`
         const timezone = (await session.exec(timezoneCmd, { timeoutMs: 30000 })).stdout.trim() || ''
 
-        const cronCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar config get DISABLE_WP_CRON --skip-plugins --skip-themes 2>/dev/null'`
+        const cronCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar config get DISABLE_WP_CRON --skip-plugins --skip-themes 2>/dev/null'`
         const cronResult = (await session.exec(cronCmd, { timeoutMs: 30000 })).stdout.trim()
         const usesServerCron = cronResult === 'true' || cronResult === '1'
 
-        const adminEmailCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar option get admin_email --skip-plugins --skip-themes 2>/dev/null'`
+        const adminEmailCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get admin_email --skip-plugins --skip-themes 2>/dev/null'`
         const adminEmail = (await session.exec(adminEmailCmd, { timeoutMs: 30000 })).stdout.trim() || ''
 
         // Get PHP info by creating a temporary script
-        const phpInfoFilename = `nemwpinfo-${Math.random().toString(36).substring(2, 10)}.php`
+        const phpInfoFilename = `mhostinfo-${Math.random().toString(36).substring(2, 10)}.php`
         const phpInfoScript = `<?php echo json_encode(['version' => PHP_VERSION, 'memory_limit' => ini_get('memory_limit')]); ?>`
         const phpInfoCmd = `
           echo '${phpInfoScript.replace(/'/g, "'\\''")}' > "${wpDir}/${phpInfoFilename}" && \
@@ -271,7 +271,7 @@ async function runScan(server: any, serverId: string) {
 
         // Get plugins
         sendEvent('log', `Getting plugins for ${siteTitle}...`)
-        const pluginsCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar plugin list --format=json --fields=name,title,status,update,version,update_version,auto_update --skip-plugins --skip-themes 2>/dev/null'`
+        const pluginsCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar plugin list --format=json --fields=name,title,status,update,version,update_version,auto_update --skip-plugins --skip-themes 2>/dev/null'`
         try {
           const pluginsResult = await session.exec(pluginsCmd, { timeoutMs: 60000 })
           const plugins = JSON.parse(pluginsResult.stdout.trim() || '[]')
@@ -341,7 +341,7 @@ async function runScan(server: any, serverId: string) {
 
         // Get themes
         sendEvent('log', `Getting themes for ${siteTitle}...`)
-        const themesCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/nemwp-cli/wp-cli.phar theme list --fields=name,title,status,update,version,update_version,auto_update --format=json --skip-plugins --skip-themes 2>/dev/null'`
+        const themesCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar theme list --fields=name,title,status,update,version,update_version,auto_update --format=json --skip-plugins --skip-themes 2>/dev/null'`
         try {
           const themesResult = await session.exec(themesCmd, { timeoutMs: 60000 })
           const themes = JSON.parse(themesResult.stdout.trim() || '[]')

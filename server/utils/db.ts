@@ -1,8 +1,9 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@@/prisma/generated/client";
+import {PrismaBetterSqlite3} from "@prisma/adapter-better-sqlite3";
+import {PrismaClient} from "@@/prisma/generated/client";
 
 const prismaClientSingleton = () => {
-  const pool = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
+  const databaseUrl = process.env.DATABASE_URL ?? "file:./mhost.db";
+  const pool = new PrismaBetterSqlite3({ url: databaseUrl });
   return new PrismaClient({ adapter: pool });
 };
 

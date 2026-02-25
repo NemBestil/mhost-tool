@@ -606,7 +606,7 @@ async function resolveExternalAsset(kind: SitePackageKind, slug: string): Promis
 
   const safeVersion = packageRow.version.replace(/[^a-zA-Z0-9._-]/g, '-')
   const safeSlug = packageRow.slug.replace(/[^a-zA-Z0-9._-]/g, '-')
-  const remoteDir = `/opt/nemwp-cli/assets/${kind}s`
+  const remoteDir = `/opt/mhost-cli/assets/${kind}s`
   const remotePath = `${remoteDir}/${safeSlug}-${safeVersion}.zip`
 
   return {
@@ -634,7 +634,7 @@ async function ensureExternalAssetOnServer(serverId: string, asset: ExternalAsse
   }
 
   const uploadPromise = (async () => {
-    await execSshCommandByServerId(serverId, `mkdir -p ${shellEscape('/opt/nemwp-cli/assets')} ${shellEscape(`/opt/nemwp-cli/assets/${asset.assetKey.startsWith('plugin:') ? 'plugins' : 'themes'}`)}`, { timeoutMs: 30_000 })
+    await execSshCommandByServerId(serverId, `mkdir -p ${shellEscape('/opt/mhost-cli/assets')} ${shellEscape(`/opt/mhost-cli/assets/${asset.assetKey.startsWith('plugin:') ? 'plugins' : 'themes'}`)}`, { timeoutMs: 30_000 })
 
     const existsResult = await execSshCommandByServerId(
       serverId,
@@ -672,10 +672,10 @@ async function ensureWpCliOnServer(serverId: string) {
 
   const promise = (async () => {
     const ensureCmd = `
-      mkdir -p /opt/nemwp-cli && \
-      if [ ! -f /opt/nemwp-cli/wp-cli.phar ] || [ $(find /opt/nemwp-cli/wp-cli.phar -mtime +14 2>/dev/null | wc -l) -gt 0 ]; then
-        curl -sS -o /opt/nemwp-cli/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
-        chmod +x /opt/nemwp-cli/wp-cli.phar
+      mkdir -p /opt/mhost-cli && \
+      if [ ! -f /opt/mhost-cli/wp-cli.phar ] || [ $(find /opt/mhost-cli/wp-cli.phar -mtime +14 2>/dev/null | wc -l) -gt 0 ]; then
+        curl -sS -o /opt/mhost-cli/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+        chmod +x /opt/mhost-cli/wp-cli.phar
       fi
     `.trim()
 
@@ -708,7 +708,7 @@ async function runWpCliCommand(
   const phpResult = await detectPhpBinary(installation.serverId)
   const cmd = [
     phpResult.binary,
-    '/opt/nemwp-cli/wp-cli.phar',
+    '/opt/mhost-cli/wp-cli.phar',
     ...args,
     '--skip-plugins',
     '--skip-themes'

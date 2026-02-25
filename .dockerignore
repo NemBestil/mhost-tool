@@ -1,0 +1,5 @@
+uploads/
+prisma/generated
+data/
+.*
+node_modules

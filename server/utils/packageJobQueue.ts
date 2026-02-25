@@ -45,13 +45,13 @@ type QueueState = {
 }
 
 const globalQueueState = globalThis as typeof globalThis & {
-  __nemwpPackageQueueState?: QueueState
+  __mhostPackageQueueState?: QueueState
 }
 
-const queueState = globalQueueState.__nemwpPackageQueueState ?? createQueueState()
+const queueState = globalQueueState.__mhostPackageQueueState ?? createQueueState()
 
-if (!globalQueueState.__nemwpPackageQueueState) {
-  globalQueueState.__nemwpPackageQueueState = queueState
+if (!globalQueueState.__mhostPackageQueueState) {
+  globalQueueState.__mhostPackageQueueState = queueState
 }
 
 export function enqueuePackageJobs(jobs: PackageQueueJobInput[]) {
