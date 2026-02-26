@@ -62,6 +62,7 @@ model WordPressInstallation {
   serverId                     String
   server                       Server            @relation(fields: [serverId], references: [id], onDelete: Cascade)
   unixUsername                 String
+  autoLoginUser                String?
   installationPath             String
   siteTitle                    String
   siteDescription              String?

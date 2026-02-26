@@ -90,19 +90,30 @@
 
       <!-- Actions Column -->
       <template #actions-cell="{ row }">
-        <UDropdownMenu
-            :items="getActionItems(row.original)"
-            :content="{
-                align: 'end',
-                side: 'bottom'
-              }">
+        <div class="flex items-center justify-end gap-2">
           <UButton
-              color="neutral"
+              icon="i-lucide-log-in"
+              :color="row.original.autoLoginUser ? 'primary' : 'warning'"
               variant="ghost"
               size="xl"
-              icon="lucide:more-horizontal"
+              :to="`/sites/${row.original.id}/wp-login`"
+              target="_blank"
           />
-        </UDropdownMenu>
+
+          <UDropdownMenu
+              :items="getActionItems(row.original)"
+              :content="{
+                  align: 'end',
+                  side: 'bottom'
+                }">
+            <UButton
+                color="neutral"
+                variant="ghost"
+                size="xl"
+                icon="lucide:more-horizontal"
+            />
+          </UDropdownMenu>
+        </div>
       </template>
     </UTable>
 
@@ -382,6 +393,7 @@ const getCveColor = (cve: number) => {
   if (cve >= 4) return 'warning'
   return 'success'
 }
+
 
 const getActionItems = (row: Site) => [
   [
