@@ -44,6 +44,13 @@ type SiteNotificationCandidate = {
   details: string
 }
 
+type SiteRecoveryCandidate = {
+  siteId: string
+  siteTitle: string
+  siteUrl: string
+  serverName: string
+}
+
 function timeoutSignal(ms: number): AbortSignal {
   const controller = new AbortController()
   setTimeout(() => controller.abort(), ms)
@@ -122,7 +129,7 @@ function createDownSummary(candidates: SiteNotificationCandidate[]): string {
   return `${uniqueSiteNames.length} site(s) are down, including ${previewSiteNames}${extraSites}. It affects sites on ${servers}.`
 }
 
-function createEmailBody(candidates: SiteNotificationCandidate[], summary: string): string {
+function createDownEmailBody(candidates: SiteNotificationCandidate[], summary: string): string {
   const lines = candidates.map((site) => {
     return `- ${site.siteTitle} (${site.siteUrl}) on ${site.serverName} [attempt ${site.failedAttempts}] - ${site.details}`
   })
@@ -139,38 +146,103 @@ function createEmailBody(candidates: SiteNotificationCandidate[], summary: strin
   ].join('\n')
 }
 
-async function sendTargetNotifications(candidates: SiteNotificationCandidate[]) {
-  if (candidates.length === 0) {
+function createUpSummary(candidates: SiteRecoveryCandidate[]): string {
+  const uniqueSiteNames = Array.from(new Set(candidates.map(item => item.siteTitle)))
+  const uniqueServerNames = Array.from(new Set(candidates.map(item => item.serverName)))
+
+  const previewSiteNames = uniqueSiteNames.slice(0, 5).join(', ')
+  const extraSites = uniqueSiteNames.length > 5 ? ` and ${uniqueSiteNames.length - 5} more` : ''
+  const servers = uniqueServerNames.join(', ')
+
+  return `${uniqueSiteNames.length} site(s) recovered, including ${previewSiteNames}${extraSites}. It affects sites on ${servers}.`
+}
+
+function createUpEmailBody(candidates: SiteRecoveryCandidate[], summary: string): string {
+  const lines = candidates.map((site) => {
+    return `- ${site.siteTitle} (${site.siteUrl}) on ${site.serverName}`
+  })
+
+  return [
+    'MHost monitoring recovery',
+    '',
+    summary,
+    '',
+    'Recovered sites:',
+    ...lines,
+    '',
+    `Generated at ${new Date().toISOString()}`
+  ].join('\n')
+}
+
+function getPriorityLabel(level: MonitoringLevel): string {
+  return level === MonitoringLevel.HIGH ? 'HIGH' : 'NORMAL'
+}
+
+function targetHandlesLevel(
+  target: { priorities: MonitoringLevel[] },
+  level: MonitoringLevel
+): boolean {
+  return target.priorities.includes(level)
+}
+
+async function sendTargetNotifications(
+  downCandidates: SiteNotificationCandidate[],
+  recoveryCandidates: SiteRecoveryCandidate[],
+  level: MonitoringLevel
+) {
+  if (downCandidates.length === 0 && recoveryCandidates.length === 0) {
     return
   }
 
   const config = await readMonitoringConfig()
   const smtpSettings = await getSmtpSettings()
   const smtpConfigured = isValidSmtpSettings(smtpSettings)
+  const priorityLabel = getPriorityLabel(level)
 
   for (const target of config.emails) {
-    const eligibleSites = candidates.filter(site => site.failedAttempts === target.minAttempts)
-    if (!eligibleSites.length || !smtpConfigured || !smtpSettings) {
+    if (!smtpConfigured || !smtpSettings || !targetHandlesLevel(target, level)) {
       continue
     }
 
-    const summary = createDownSummary(eligibleSites)
-    const body = createEmailBody(eligibleSites, summary)
+    const eligibleDownSites = downCandidates.filter(site => site.failedAttempts === target.minAttempts)
+    if (eligibleDownSites.length) {
+      const summary = createDownSummary(eligibleDownSites)
+      const body = createDownEmailBody(eligibleDownSites, summary)
 
-    try {
-      await sendPlainTextEmail(
-        smtpSettings,
-        target.email,
-        `MHost alert: ${eligibleSites.length} site(s) down`,
-        body
-      )
-    } catch (error) {
-      console.error('Failed to send email notification:', error)
+      try {
+        await sendPlainTextEmail(
+          smtpSettings,
+          target.email,
+          `🔴 [${priorityLabel}] MHost alert: ${eligibleDownSites.length} site(s) down`,
+          body
+        )
+      } catch (error) {
+        console.error('Failed to send email notification:', error)
+      }
+    }
+
+    const eligibleRecoveredSites = target.notifyOnUp
+      ? recoveryCandidates
+      : []
+    if (eligibleRecoveredSites.length) {
+      const summary = createUpSummary(eligibleRecoveredSites)
+      const body = createUpEmailBody(eligibleRecoveredSites, summary)
+
+      try {
+        await sendPlainTextEmail(
+          smtpSettings,
+          target.email,
+          `🟢 [${priorityLabel}] MHost recovery: ${eligibleRecoveredSites.length} site(s) up`,
+          body
+        )
+      } catch (error) {
+        console.error('Failed to send recovery email notification:', error)
+      }
     }
   }
 
   for (const target of config.pushoverTokens) {
-    const eligibleSites = candidates.filter(site => site.failedAttempts === target.minAttempts)
+    const eligibleSites = downCandidates.filter(site => site.failedAttempts === target.minAttempts)
     if (!eligibleSites.length) {
       continue
     }
@@ -200,7 +272,7 @@ async function sendTargetNotifications(candidates: SiteNotificationCandidate[]) 
   }
 
   for (const target of config.webhooks) {
-    const eligibleSites = candidates.filter(site => site.failedAttempts === target.minAttempts)
+    const eligibleSites = downCandidates.filter(site => site.failedAttempts === target.minAttempts)
     if (!eligibleSites.length) {
       continue
     }
@@ -302,6 +374,7 @@ export async function pingSitesByLevel(level: MonitoringLevel) {
 
   const siteMap = new Map(sites.map(site => [site.id, site]))
   const notificationCandidates: SiteNotificationCandidate[] = []
+  const recoveryCandidates: SiteRecoveryCandidate[] = []
 
   for (const result of results) {
     const site = siteMap.get(result.siteId)
@@ -347,9 +420,18 @@ export async function pingSitesByLevel(level: MonitoringLevel) {
         details: result.details
       })
     }
+
+    if (result.isUp && site.monitoringStatus === MonitoringStatus.DOWN && nextStatus === MonitoringStatus.UP) {
+      recoveryCandidates.push({
+        siteId: site.id,
+        siteTitle: site.siteTitle,
+        siteUrl: site.siteUrl,
+        serverName: site.server.name
+      })
+    }
   }
 
-  await sendTargetNotifications(notificationCandidates)
+  await sendTargetNotifications(notificationCandidates, recoveryCandidates, level)
 
   return {
     checked: sites.length,

@@ -202,6 +202,9 @@ model MonitoringNotificationTarget {
   value           String
   pushoverUserKey String?
   minAttempts     Int                        @default(1)
+  emailNotifyOnUp Boolean                    @default(false)
+  emailNotifyHigh Boolean                    @default(true)
+  emailNotifyNormal Boolean                  @default(true)
   criticality     MonitoringCriticality?
   createdAt       DateTime                   @default(now())
   updatedAt       DateTime                   @updatedAt

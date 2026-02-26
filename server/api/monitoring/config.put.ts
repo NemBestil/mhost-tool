@@ -10,7 +10,9 @@ import { z } from 'zod'
 
 const emailTargetSchema = z.object({
   email: z.string().trim().email(),
-  minAttempts: z.number().int().min(1)
+  minAttempts: z.number().int().min(1),
+  notifyOnUp: z.boolean(),
+  priorities: z.array(z.enum([MonitoringLevel.HIGH, MonitoringLevel.NORMAL])).min(1)
 })
 
 const pushoverTargetSchema = z.object({
@@ -99,12 +101,16 @@ export default defineEventHandler(async (event) => {
     })
 
     for (const emailEntry of body.emails) {
+      const prioritySet = new Set(emailEntry.priorities)
       await tx.monitoringNotificationTarget.create({
         data: {
           configId: 1,
           type: MonitoringNotificationType.EMAIL,
           value: emailEntry.email,
-          minAttempts: emailEntry.minAttempts
+          minAttempts: emailEntry.minAttempts,
+          emailNotifyOnUp: emailEntry.notifyOnUp,
+          emailNotifyHigh: prioritySet.has(MonitoringLevel.HIGH),
+          emailNotifyNormal: prioritySet.has(MonitoringLevel.NORMAL)
         }
       })
     }

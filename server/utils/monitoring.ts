@@ -9,6 +9,8 @@ export type MonitoringConfigResponse = {
     id: string
     email: string
     minAttempts: number
+    notifyOnUp: boolean
+    priorities: MonitoringLevel[]
   }[]
   pushoverTokens: {
     id: string
@@ -48,7 +50,12 @@ export async function readMonitoringConfig(tx: Prisma.TransactionClient | typeof
     .map(target => ({
       id: target.id,
       email: target.value,
-      minAttempts: Math.max(1, target.minAttempts)
+      minAttempts: Math.max(1, target.minAttempts),
+      notifyOnUp: target.emailNotifyOnUp,
+      priorities: [
+        ...(target.emailNotifyHigh ? [MonitoringLevel.HIGH] : []),
+        ...(target.emailNotifyNormal ? [MonitoringLevel.NORMAL] : [])
+      ]
     }))
 
   const pushoverTokens = targets
