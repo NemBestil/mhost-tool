@@ -248,7 +248,7 @@ async function runQueue(sites: SiteToPing[]): Promise<SiteTestResult[]> {
         })
       })
   }, {
-    concurrent: 5
+    concurrent: 2
   })
 
   const work = sites.map(site => new Promise<SiteTestResult>((resolve) => {
