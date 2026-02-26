@@ -628,6 +628,11 @@
         v-model:open="isSitesModalOpen"
         :package-details="sitesModalPackageDetails"
     />
+
+    <PackageMissingSitesModal
+        v-model:open="isMissingSitesModalOpen"
+        :package-details="missingSitesModalPackageDetails"
+    />
   </NuxtLayout>
 </template>
 
@@ -732,6 +737,12 @@ const isSitesModalOpen = ref(false)
 const activeSitesKind = ref<InstalledPackageKind>('installed-plugins')
 const activeSitesSlug = ref('')
 const activeSitesTitle = ref<string | null>(null)
+
+// Missing-sites modal state (for installing package on sites where it is not installed)
+const isMissingSitesModalOpen = ref(false)
+const activeMissingSitesKind = ref<PackageKind>('plugins')
+const activeMissingSitesSlug = ref('')
+const activeMissingSitesTitle = ref<string | null>(null)
 
 // Filters for installed plugins/themes
 const installedPluginsSearch = ref('')
@@ -980,6 +991,15 @@ const sitesModalPackageDetails = computed(() => {
   }
 })
 
+const missingSitesModalPackageDetails = computed(() => {
+  if (!activeMissingSitesSlug.value) return null
+  return {
+    kind: activeMissingSitesKind.value,
+    slug: activeMissingSitesSlug.value,
+    title: activeMissingSitesTitle.value
+  }
+})
+
 const allVersionsSelected = computed(() => {
   return versions.value.length > 0 && versions.value.every(row => selectedVersionIds.value.includes(row.id))
 })
@@ -1000,6 +1020,11 @@ const getActionItems = (kind: PackageKind, row: UploadedPackageRow): DropdownMen
       label: 'Sites with ' + (kind === 'plugins' ? 'plugin' : 'theme'),
       icon: 'i-lucide-layout-list',
       onSelect: () => openSitesModal(kind === 'plugins' ? 'installed-plugins' : 'installed-themes', row.slug, row.title)
+    },
+    {
+      label: 'Sites without ' + (kind === 'plugins' ? 'plugin' : 'theme'),
+      icon: 'i-lucide-list-x',
+      onSelect: () => openMissingSitesModal(kind, row.slug, row.title)
     }
   ],
   [
@@ -1125,6 +1150,13 @@ const openSitesModal = (kind: InstalledPackageKind, slug: string, title: string 
   activeSitesSlug.value = slug
   activeSitesTitle.value = title
   isSitesModalOpen.value = true
+}
+
+const openMissingSitesModal = (kind: PackageKind, slug: string, title: string | null) => {
+  activeMissingSitesKind.value = kind
+  activeMissingSitesSlug.value = slug
+  activeMissingSitesTitle.value = title
+  isMissingSitesModalOpen.value = true
 }
 
 const queuePackageUpdates = async (kind: 'plugin' | 'theme', slug: string, installationIds: string[]) => {

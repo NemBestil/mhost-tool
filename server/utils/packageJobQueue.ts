@@ -8,7 +8,7 @@ import {
   type SitePackageOperationResult
 } from '#server/utils/sitePackageOperations'
 
-export type PackageQueueOperation = 'update' | 'install'
+export type PackageQueueOperation = 'update' | 'install' | 'install-activate'
 
 export type PackageQueueJobInput = {
   installationId: string

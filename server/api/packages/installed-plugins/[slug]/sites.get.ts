@@ -5,6 +5,7 @@ type SiteWithVersion = {
   installationId: string
   siteTitle: string
   siteUrl: string
+  serverName: string
   version: string
   isActive: boolean
   isUpToDate: boolean
@@ -29,7 +30,12 @@ export default defineEventHandler(async (event) => {
           select: {
             id: true,
             siteTitle: true,
-            siteUrl: true
+            siteUrl: true,
+            server: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       }
@@ -56,6 +62,7 @@ export default defineEventHandler(async (event) => {
     installationId: plugin.installation.id,
     siteTitle: plugin.installation.siteTitle,
     siteUrl: plugin.installation.siteUrl,
+    serverName: plugin.installation.server.name,
     version: plugin.version,
     isActive: plugin.isEnabled,
     isUpToDate: !latestVersion || !isVersionNewer(latestVersion, plugin.version)

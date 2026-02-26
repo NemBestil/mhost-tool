@@ -33,7 +33,9 @@ async function normalizeJobs(input: unknown): Promise<PackageQueueJobInput[]> {
       const installationId = typeof item.installationId === 'string' ? item.installationId : ''
       const slug = typeof item.slug === 'string' ? item.slug : ''
       const kind = item.kind === 'plugin' || item.kind === 'theme' ? item.kind : null
-      const operation = item.operation === 'update' || item.operation === 'install' ? item.operation : null
+      const operation = item.operation === 'update' || item.operation === 'install' || item.operation === 'install-activate'
+        ? item.operation
+        : null
       const source = item.source === 'wordpress.org' || item.source === 'external' ? item.source : undefined
 
       if (!installationId || !slug || !kind || !operation) {

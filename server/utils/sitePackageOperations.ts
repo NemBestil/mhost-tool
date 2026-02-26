@@ -6,7 +6,7 @@ import { execSshCommandByServerId, uploadFileToServerByServerId } from '#server/
 import { detectPhpBinary } from '#server/utils/phpBinary'
 
 export type SitePackageKind = 'plugin' | 'theme'
-export type SitePackageOperation = 'update' | 'install' | 'activate' | 'deactivate' | 'delete'
+export type SitePackageOperation = 'update' | 'install' | 'install-activate' | 'activate' | 'deactivate' | 'delete'
 export type PackageSource = 'wordpress.org' | 'external'
 
 export type SitePackageOperationInput = {
@@ -64,6 +64,28 @@ export async function executeSitePackageOperation(input: SitePackageOperationInp
 
   if (input.operation === 'update' || input.operation === 'install') {
     return await handleUpdateOrInstall(installation, input)
+  }
+
+  if (input.operation === 'install-activate') {
+    const installResult = await handleUpdateOrInstall(installation, {
+      ...input,
+      operation: 'install'
+    })
+
+    if (installResult.status === 'failed') {
+      return installResult
+    }
+
+    const activationResult = await handleActivate(installation, input.kind, input.slug)
+    if (activationResult.status === 'failed') {
+      return activationResult
+    }
+
+    const wpKind = input.kind === 'plugin' ? 'plugin' : 'theme'
+    return {
+      status: 'success',
+      message: `${capitalize(wpKind)} "${input.slug}" installed and activated`
+    }
   }
 
   if (input.operation === 'activate') {

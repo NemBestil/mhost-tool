@@ -8,7 +8,7 @@ export interface PackageJobLogEntry {
   siteTitle?: string
   kind?: 'plugin' | 'theme'
   slug?: string
-  operation?: 'update' | 'install'
+  operation?: 'update' | 'install' | 'install-activate'
 }
 
 export interface PackageJobProgress {

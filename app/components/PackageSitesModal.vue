@@ -7,142 +7,152 @@
         </div>
 
         <template v-else>
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div class="text-sm text-neutral-500">
-              Latest version:
-              <UBadge color="primary" variant="outline" v-if="latestVersion" >{{ latestVersion }}</UBadge>
-              <UBadge color="warning" v-else>Not available</UBadge>
-            </div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <UButton
-                :label="`Update (${selectedOutdatedSites.length})`"
-                icon="i-lucide-arrow-up-circle"
-                color="warning"
-                :variant="selectedOutdatedSites.length === 0 || isProcessing ? 'outline' : 'solid'"
-                :disabled="selectedOutdatedSites.length === 0 || isProcessing"
-                :loading="isProcessing && currentAction === 'update'"
-                @click="updateSelectedOutdatedSites"
-              />
-              <UButton
-                icon="i-lucide-play"
-                color="success"
-                :variant="selectedInactiveSites.length === 0 || isProcessing ? 'outline' : 'solid'"
-                :label="`Activate (${selectedInactiveSites.length})`"
-                :disabled="selectedInactiveSites.length === 0 || isProcessing"
-                :loading="isProcessing && currentAction === 'activate'"
-                @click="activateSelectedSites"
-              />
-              <UButton
-                :label="`Deactivate (${selectedActiveSites.length})`"
-                icon="i-lucide-power"
-                color="neutral"
-                :variant="selectedActiveSites.length === 0 || isProcessing ? 'outline' : 'solid'"
-                :disabled="selectedActiveSites.length === 0 || isProcessing"
-                :loading="isProcessing && currentAction === 'deactivate'"
-                @click="deactivateSelectedSites"
-              />
-              <UButton
-                :label="`Delete (${selectedDeletableSites.length})`"
-                icon="i-lucide-trash"
-                color="error"
-                :variant="selectedDeletableSites.length === 0 || isProcessing ? 'outline' : 'solid'"
-                :disabled="selectedDeletableSites.length === 0 || isProcessing"
-                :loading="isProcessing && currentAction === 'delete'"
-                @click="deleteSelectedSites"
-              />
-            </div>
-          </div>
+          <UAlert
+            v-if="sites.length === 0"
+            color="warning"
+            variant="soft"
+            title="Not installed anywhere"
+            :description="`This ${packageKind === 'plugin' ? 'plugin' : 'theme'} is not installed on any site.`"
+          />
 
-          <UTable
-            :data="sites"
-            :columns="siteColumns"
-            class="max-h-[60vh]"
-            sticky
-          >
-            <template #selected-header>
-              <UCheckbox
-                :model-value="allSitesSelected"
-                @update:model-value="toggleAllRows"
-              />
-            </template>
-
-            <template #selected-cell="{ row }">
-              <UIcon
-                v-if="isRowPending(row.original.installationId)"
-                name="i-lucide-loader-2"
-                class="size-4 animate-spin text-primary"
-              />
-              <UCheckbox
-                v-else
-                :model-value="selectedInstallationIds.includes(row.original.installationId)"
-                @update:model-value="(value) => toggleRow(row.original.installationId, Boolean(value))"
-              />
-            </template>
-
-            <template #siteTitle-cell="{ row }">
-              <div
-                class="flex flex-col"
-                :class="{ 'opacity-50 pointer-events-none': isRowPending(row.original.installationId) }"
-              >
-                <NuxtLink
-                  :to="`/sites/${row.original.installationId}`"
-                  class="font-medium hover:text-primary transition-colors"
-                  @click="isOpen = false"
-                >
-                  <span v-html="row.original.siteTitle"></span>
-                </NuxtLink>
-                <a
-                  :href="row.original.siteUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-sm text-neutral-500 hover:text-primary transition-colors"
-                >
-                  {{ row.original.siteUrl }}
-                </a>
+          <template v-else>
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="text-sm text-neutral-500">
+                Latest version:
+                <UBadge color="primary" variant="outline" v-if="latestVersion" >{{ latestVersion }}</UBadge>
+                <UBadge color="warning" v-else>Not available</UBadge>
               </div>
-            </template>
-
-            <template #version-cell="{ row }">
-              <div
-                class="flex items-center justify-between gap-2 w-full text-sm"
-                :class="{ 'opacity-50 pointer-events-none': isRowPending(row.original.installationId) }"
-              >
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <span>{{ row.original.version }}</span>
-                  <template v-if="latestVersion && latestVersion !== row.original.version">
-                    <UIcon name="i-lucide-arrow-right" class="size-3.5 text-warning" />
-                    <span class="text-warning font-medium">{{ latestVersion }}</span>
-                  </template>
-                  <UIcon
-                    v-else-if="latestVersion && latestVersion === row.original.version"
-                    name="i-lucide-check-circle"
-                    class="size-3.5 text-primary"
-                  />
-                </div>
+              <div class="flex items-center gap-2 flex-wrap">
                 <UButton
-                  v-if="latestVersion && latestVersion !== row.original.version"
+                  :label="`Update (${selectedOutdatedSites.length})`"
                   icon="i-lucide-arrow-up-circle"
                   color="warning"
-                  variant="ghost"
-                  size="xl"
-                  :disabled="isProcessing || isRowPending(row.original.installationId)"
-                  @click="queueUpdateForSite(row.original)"
+                  :variant="selectedOutdatedSites.length === 0 || isProcessing ? 'outline' : 'solid'"
+                  :disabled="selectedOutdatedSites.length === 0 || isProcessing"
+                  :loading="isProcessing && currentAction === 'update'"
+                  @click="updateSelectedOutdatedSites"
+                />
+                <UButton
+                  icon="i-lucide-play"
+                  color="success"
+                  :variant="selectedInactiveSites.length === 0 || isProcessing ? 'outline' : 'solid'"
+                  :label="`Activate (${selectedInactiveSites.length})`"
+                  :disabled="selectedInactiveSites.length === 0 || isProcessing"
+                  :loading="isProcessing && currentAction === 'activate'"
+                  @click="activateSelectedSites"
+                />
+                <UButton
+                  :label="`Deactivate (${selectedActiveSites.length})`"
+                  icon="i-lucide-power"
+                  color="neutral"
+                  :variant="selectedActiveSites.length === 0 || isProcessing ? 'outline' : 'solid'"
+                  :disabled="selectedActiveSites.length === 0 || isProcessing"
+                  :loading="isProcessing && currentAction === 'deactivate'"
+                  @click="deactivateSelectedSites"
+                />
+                <UButton
+                  :label="`Delete (${selectedDeletableSites.length})`"
+                  icon="i-lucide-trash"
+                  color="error"
+                  :variant="selectedDeletableSites.length === 0 || isProcessing ? 'outline' : 'solid'"
+                  :disabled="selectedDeletableSites.length === 0 || isProcessing"
+                  :loading="isProcessing && currentAction === 'delete'"
+                  @click="deleteSelectedSites"
                 />
               </div>
-            </template>
+            </div>
 
-            <template #state-cell="{ row }">
-              <div :class="{ 'opacity-50': isRowPending(row.original.installationId) }">
-                <UBadge
-                  :color="row.original.isActive ? 'success' : 'neutral'"
-                  variant="subtle"
-                  size="sm"
+            <UTable
+              :data="sites"
+              :columns="siteColumns"
+              class="max-h-[60vh]"
+              sticky
+            >
+              <template #selected-header>
+                <UCheckbox
+                  :model-value="allSitesSelected"
+                  @update:model-value="toggleAllRows"
+                />
+              </template>
+
+              <template #selected-cell="{ row }">
+                <UIcon
+                  v-if="isRowPending(row.original.installationId)"
+                  name="i-lucide-loader-2"
+                  class="size-4 animate-spin text-primary"
+                />
+                <UCheckbox
+                  v-else
+                  :model-value="selectedInstallationIds.includes(row.original.installationId)"
+                  @update:model-value="(value) => toggleRow(row.original.installationId, Boolean(value))"
+                />
+              </template>
+
+              <template #siteTitle-cell="{ row }">
+                <div
+                  class="flex flex-col"
+                  :class="{ 'opacity-50 pointer-events-none': isRowPending(row.original.installationId) }"
                 >
-                  {{ row.original.isActive ? 'Active' : 'Inactive' }}
-                </UBadge>
-              </div>
-            </template>
-          </UTable>
+                  <NuxtLink
+                    :to="`/sites/${row.original.installationId}`"
+                    class="font-medium hover:text-primary transition-colors"
+                    @click="isOpen = false"
+                  >
+                    <span v-html="row.original.siteTitle"></span>
+                  </NuxtLink>
+                  <a
+                    :href="row.original.siteUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-sm text-neutral-500 hover:text-primary transition-colors"
+                  >
+                    {{ row.original.siteUrl }}
+                  </a>
+                </div>
+              </template>
+
+              <template #version-cell="{ row }">
+                <div
+                  class="flex items-center justify-between gap-2 w-full text-sm"
+                  :class="{ 'opacity-50 pointer-events-none': isRowPending(row.original.installationId) }"
+                >
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span>{{ row.original.version }}</span>
+                    <template v-if="latestVersion && latestVersion !== row.original.version">
+                      <UIcon name="i-lucide-arrow-right" class="size-3.5 text-warning" />
+                      <span class="text-warning font-medium">{{ latestVersion }}</span>
+                    </template>
+                    <UIcon
+                      v-else-if="latestVersion && latestVersion === row.original.version"
+                      name="i-lucide-check-circle"
+                      class="size-3.5 text-primary"
+                    />
+                  </div>
+                  <UButton
+                    v-if="latestVersion && latestVersion !== row.original.version"
+                    icon="i-lucide-arrow-up-circle"
+                    color="warning"
+                    variant="ghost"
+                    size="xl"
+                    :disabled="isProcessing || isRowPending(row.original.installationId)"
+                    @click="queueUpdateForSite(row.original)"
+                  />
+                </div>
+              </template>
+
+              <template #state-cell="{ row }">
+                <div :class="{ 'opacity-50': isRowPending(row.original.installationId) }">
+                  <UBadge
+                    :color="row.original.isActive ? 'success' : 'neutral'"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ row.original.isActive ? 'Active' : 'Inactive' }}
+                  </UBadge>
+                </div>
+              </template>
+            </UTable>
+          </template>
         </template>
       </div>
     </template>
@@ -171,6 +181,7 @@ type SiteWithVersion = {
   installationId: string
   siteTitle: string
   siteUrl: string
+  serverName: string
   version: string
   isActive: boolean
   isUpToDate: boolean
@@ -256,6 +267,10 @@ const siteColumns: TableColumn<SiteWithVersion>[] = [
   {
     accessorKey: 'siteTitle',
     header: 'Site'
+  },
+  {
+    accessorKey: 'serverName',
+    header: 'Server'
   },
   {
     accessorKey: 'version',
