@@ -78,9 +78,9 @@ async function runSingleSiteTest(site: SiteToPing): Promise<SiteTestResult> {
   }
 
   try {
-    result.frontStatusCode = await headRequest(site.siteUrl, 10_000)
+    result.frontStatusCode = await headRequest(site.siteUrl, 30_000)
   } catch (error: any) {
-    result.details = `Frontpage check failed: ${error?.name === 'AbortError' ? 'timeout after 10s' : (error?.message || 'request error')}`
+    result.details = `Frontpage check failed: ${error?.name === 'AbortError' ? 'timeout after 30s' : (error?.message || 'request error')}`
     return result
   }
 
@@ -102,9 +102,9 @@ async function runSingleSiteTest(site: SiteToPing): Promise<SiteTestResult> {
     }
 
     try {
-      result.wpLoginStatusCode = await headRequest(wpLoginUrl, 10_000)
+      result.wpLoginStatusCode = await headRequest(wpLoginUrl, 30_000)
     } catch (error: any) {
-      result.details = `wp-login.php check failed: ${error?.name === 'AbortError' ? 'timeout after 10s' : (error?.message || 'request error')}`
+      result.details = `wp-login.php check failed: ${error?.name === 'AbortError' ? 'timeout after 30s' : (error?.message || 'request error')}`
       return result
     }
 
