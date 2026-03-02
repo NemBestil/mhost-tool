@@ -508,7 +508,7 @@ const updateSiteMonitoringLevel = async (site: MonitoringSite, level: Monitoring
   updatingSiteLevel.value[site.id] = true
 
   try {
-    await useApiClient()(`/monitoring/sites/${site.id}/level`, {
+    const updated = await useApiClient<Pick<MonitoringSite, 'id' | 'monitoringLevel' | 'monitoringStatus' | 'monitoringCurrentStatusSince' | 'monitoringFailedAttempts'>>(`/monitoring/sites/${site.id}/level`, {
       method: 'PUT',
       body: {
         monitoringLevel: level
@@ -518,7 +518,13 @@ const updateSiteMonitoringLevel = async (site: MonitoringSite, level: Monitoring
     // Update the site in the query cache
     queryClient.setQueryData<MonitoringSite[]>(['monitoring-sites'], (oldData) => {
       if (!oldData) return oldData
-      return oldData.map(s => s.id === site.id ? { ...s, monitoringLevel: level } : s)
+      return oldData.map(s => s.id === site.id ? {
+        ...s,
+        monitoringLevel: updated.monitoringLevel,
+        monitoringStatus: updated.monitoringStatus,
+        monitoringCurrentStatusSince: updated.monitoringCurrentStatusSince,
+        monitoringFailedAttempts: updated.monitoringFailedAttempts
+      } : s)
     })
   } catch {
     toast.add({

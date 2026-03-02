@@ -1,4 +1,4 @@
-import { MonitoringLevel } from '@@/prisma/generated/client'
+import { MonitoringLevel, MonitoringStatus } from '@@/prisma/generated/client'
 import { prisma } from '#server/utils/db'
 import { z } from 'zod'
 
@@ -9,6 +9,7 @@ const bodySchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const body = bodySchema.parse(await readBody(event))
+  const resetMonitoringState = body.monitoringLevel === MonitoringLevel.NONE
 
   const result = await prisma.wordPressInstallation.updateMany({
     where: {
@@ -17,7 +18,14 @@ export default defineEventHandler(async (event) => {
       }
     },
     data: {
-      monitoringLevel: body.monitoringLevel
+      monitoringLevel: body.monitoringLevel,
+      ...(resetMonitoringState
+        ? {
+            monitoringStatus: MonitoringStatus.UNKNOWN,
+            monitoringCurrentStatusSince: null,
+            monitoringFailedAttempts: 0
+          }
+        : {})
     }
   })
 

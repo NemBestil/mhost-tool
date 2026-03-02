@@ -49,6 +49,7 @@ type SiteRecoveryCandidate = {
   siteTitle: string
   siteUrl: string
   serverName: string
+  failedAttempts: number
 }
 
 function timeoutSignal(ms: number): AbortSignal {
@@ -159,7 +160,7 @@ function createUpSummary(candidates: SiteRecoveryCandidate[]): string {
 
 function createUpEmailBody(candidates: SiteRecoveryCandidate[], summary: string): string {
   const lines = candidates.map((site) => {
-    return `- ${site.siteTitle} (${site.siteUrl}) on ${site.serverName}`
+    return `- ${site.siteTitle} (${site.siteUrl}) on ${site.serverName} [recovered after ${site.failedAttempts} failed attempt(s)]`
   })
 
   return [
@@ -222,7 +223,7 @@ async function sendTargetNotifications(
     }
 
     const eligibleRecoveredSites = target.notifyOnUp
-      ? recoveryCandidates
+      ? recoveryCandidates.filter(site => site.failedAttempts >= target.minAttempts)
       : []
     if (eligibleRecoveredSites.length) {
       const summary = createUpSummary(eligibleRecoveredSites)
@@ -426,7 +427,8 @@ export async function pingSitesByLevel(level: MonitoringLevel) {
         siteId: site.id,
         siteTitle: site.siteTitle,
         siteUrl: site.siteUrl,
-        serverName: site.server.name
+        serverName: site.server.name,
+        failedAttempts: site.monitoringFailedAttempts
       })
     }
   }

@@ -173,6 +173,7 @@ import type {TableColumn} from '@nuxt/ui'
 import {formatDistanceToNow} from 'date-fns'
 import {useQuery} from '@tanstack/vue-query'
 import type {TypedInternalResponse} from 'nitropack'
+import {refDebounced} from "@vueuse/core";
 
 const UCheckbox = resolveComponent('UCheckbox')
 
@@ -196,6 +197,7 @@ const {data: servers} = useQuery<ServerList>({
 
 const table = useTemplateRef('table')
 const search = ref('')
+const searchThrottled = refDebounced(search, 500)
 const sorting = ref([{id: 'siteTitle', desc: false}])
 
 const selectedServer = ref<{ label: string, value: string } | null>(null)
@@ -214,8 +216,8 @@ const filteredSites = computed(() => {
     result = result.filter(s => s.serverId === selectedServer.value!.value)
   }
 
-  if (search.value) {
-    const q = search.value.toLowerCase()
+  if (searchThrottled.value) {
+    const q = searchThrottled.value.toLowerCase()
     result = result.filter(s =>
         s.siteTitle.toLowerCase().includes(q) ||
         s.siteUrl.toLowerCase().includes(q)
@@ -228,9 +230,7 @@ const filteredSites = computed(() => {
 type Site = NonNullable<typeof sites.value>[number]
 
 // Selection state
-const selectedCount = computed(() => {
-  return table.value?.tableApi?.getFilteredSelectedRowModel().rows.length || 0
-})
+const selectedCount = computed((): number => table.value?.tableApi?.getFilteredSelectedRowModel().rows.length || 0)
 
 const getSelectedSiteIds = () => {
   const selectedRows = table.value?.tableApi?.getFilteredSelectedRowModel().rows || []
@@ -289,8 +289,8 @@ const confirmDelete = async () => {
   }
 }
 
-const createSortableColumn = (accessorKey: string, label: string, sortingFn?: any) => {
-  const column: any = {
+const createSortableColumn = (accessorKey: string, label: string, sortingFn?: any): TableColumn<Site> => {
+  const column: TableColumn<Site> = {
     accessorKey,
     header: ({column}) => {
       const isSorted = column.getIsSorted()
