@@ -68,25 +68,6 @@
         <span>{{ row.original.server.name }}</span>
       </template>
 
-      <template #monitoringLevel-cell="{ row }">
-        <USelect
-          :model-value="row.original.monitoringLevel"
-          :items="monitoringLevelOptions"
-          value-key="id"
-          class="w-44"
-          @update:model-value="(value : MonitoringLevel) => updateSiteMonitoringLevel(row.original, value)"
-        >
-          <template #item-label="{ item }">
-            <span :class="item.color ? `text-${item.color}` : ''">{{ item.label }}</span>
-          </template>
-          <template #default="{ modelValue }">
-            <span v-if="modelValue" :class="monitoringLevelOptions.find(o => o.id === modelValue)?.color ? `text-${monitoringLevelOptions.find(o => o.id === modelValue)?.color}` : ''">
-              {{ monitoringLevelOptions.find(o => o.id === modelValue)?.label }}
-            </span>
-          </template>
-        </USelect>
-      </template>
-
       <template #monitoringStatus-cell="{ row }">
         <div class="flex flex-col">
           <UBadge
@@ -94,6 +75,13 @@
             variant="subtle"
           >
             {{ row.original.monitoringStatus === 'DOWN' ? 'Down' : (row.original.monitoringStatus === 'UP' ? 'Up' : 'Unknown') }}
+          </UBadge>
+          <UBadge
+            :color="row.original.monitoringLevel === 'HIGH' ? 'error' : (row.original.monitoringLevel === 'NORMAL' ? 'primary' : 'neutral')"
+            variant="soft"
+            class="mt-1 w-fit"
+          >
+            {{ row.original.monitoringLevel === 'HIGH' ? 'High priority' : (row.original.monitoringLevel === 'NORMAL' ? 'Normal priority' : 'No monitoring') }}
           </UBadge>
           <span
             v-if="row.original.monitoringStatus === 'DOWN' && row.original.monitoringCurrentStatusSince"
@@ -375,7 +363,6 @@ const getSelectedSiteIds = () => {
 
 const historyBySiteId = ref<Record<string, MonitoringEvent[]>>({})
 const historyLoading = ref<Record<string, boolean>>({})
-const updatingSiteLevel = ref<Record<string, boolean>>({})
 const updatingSiteChecks = ref<Record<string, boolean>>({})
 const siteCheckDraftById = ref<Record<string, {
   monitoringTestWpLogin: boolean
@@ -453,14 +440,6 @@ const columns: TableColumn<MonitoringSite>[] = [
   createSortableColumn('server', 'Server', (rowA: any, rowB: any) => {
     return rowA.original.server.name.localeCompare(rowB.original.server.name)
   }),
-  createSortableColumn('monitoringLevel', 'Monitoring', (rowA: any, rowB: any) => {
-    const weights: Record<MonitoringLevel, number> = {
-      NONE: 0,
-      NORMAL: 1,
-      HIGH: 2
-    }
-    return weights[rowA.original.monitoringLevel as MonitoringLevel] - weights[rowB.original.monitoringLevel as MonitoringLevel]
-  }),
   createSortableColumn('monitoringStatus', 'Status'),
   createSortableColumn('monitoringLastCheckedAt', 'Last checked')
 ]
@@ -499,41 +478,6 @@ const loadHistory = async (siteId: string) => {
     historyBySiteId.value[siteId] = []
   } finally {
     historyLoading.value[siteId] = false
-  }
-}
-
-const updateSiteMonitoringLevel = async (site: MonitoringSite, level: MonitoringLevel) => {
-  if (site.monitoringLevel === level) return
-
-  updatingSiteLevel.value[site.id] = true
-
-  try {
-    const updated = await useApiClient<Pick<MonitoringSite, 'id' | 'monitoringLevel' | 'monitoringStatus' | 'monitoringCurrentStatusSince' | 'monitoringFailedAttempts'>>(`/monitoring/sites/${site.id}/level`, {
-      method: 'PUT',
-      body: {
-        monitoringLevel: level
-      }
-    })
-
-    // Update the site in the query cache
-    queryClient.setQueryData<MonitoringSite[]>(['monitoring-sites'], (oldData) => {
-      if (!oldData) return oldData
-      return oldData.map(s => s.id === site.id ? {
-        ...s,
-        monitoringLevel: updated.monitoringLevel,
-        monitoringStatus: updated.monitoringStatus,
-        monitoringCurrentStatusSince: updated.monitoringCurrentStatusSince,
-        monitoringFailedAttempts: updated.monitoringFailedAttempts
-      } : s)
-    })
-  } catch {
-    toast.add({
-      title: 'Error',
-      description: 'Failed to update monitoring level.',
-      color: 'error'
-    })
-  } finally {
-    updatingSiteLevel.value[site.id] = false
   }
 }
 
