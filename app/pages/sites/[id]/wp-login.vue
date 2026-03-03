@@ -9,7 +9,7 @@
         <UIcon name="i-lucide-loader-2" class="size-8 animate-spin text-primary"/>
         <div class="text-base font-medium">Please wait, logging you in...</div>
         <p class="text-sm text-neutral-500">
-          We are preparing a one-time WordPress login link for this site.
+          We are preparing a one-time WordPress® login link for this site.
         </p>
       </div>
 

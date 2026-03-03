@@ -49,7 +49,7 @@ export async function updateVersionCheckTimestamp(): Promise<void> {
 }
 
 /**
- * Check WordPress.org for plugin updates and update the database.
+ * Check WordPress®.org for plugin updates and update the database.
  */
 export async function checkPluginUpdates(): Promise<void> {
   // Get all unique plugin slugs with their mainFilePath
@@ -89,7 +89,7 @@ export async function checkPluginUpdates(): Promise<void> {
     })
 
     if (!response.ok) {
-      console.error('WordPress.org plugin update check failed:', response.status)
+      console.error('WordPress®.org plugin update check failed:', response.status)
       return
     }
 
@@ -134,7 +134,7 @@ export async function checkPluginUpdates(): Promise<void> {
 }
 
 /**
- * Check WordPress.org for theme updates and update the database.
+ * Check WordPress®.org for theme updates and update the database.
  */
 export async function checkThemeUpdates(): Promise<void> {
   // Get all unique theme slugs
@@ -169,7 +169,7 @@ export async function checkThemeUpdates(): Promise<void> {
     })
 
     if (!response.ok) {
-      console.error('WordPress.org theme update check failed:', response.status)
+      console.error('WordPress®.org theme update check failed:', response.status)
       return
     }
 

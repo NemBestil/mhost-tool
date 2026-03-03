@@ -143,7 +143,7 @@
           Are you sure you want to delete <strong>{{ selectedCount }}</strong> site(s) from MHost?
         </p>
         <p class="text-sm text-muted mt-2">
-          The actual WordPress sites will remain untouched on your servers. Only the records in MHost will be removed.
+          The actual WordPress® sites will remain untouched on your servers. Only the records in MHost will be removed.
         </p>
       </template>
       <template #footer>
@@ -178,7 +178,7 @@ import {refDebounced} from "@vueuse/core";
 const UCheckbox = resolveComponent('UCheckbox')
 
 definePageMeta({
-  title: 'WordPress Sites'
+  title: 'WordPress® Sites'
 })
 
 const scanStore = useScanStore()

@@ -8,8 +8,8 @@ export type PhpBinaryResult = {
 
 /**
  * Detects the PHP binary path for a given server based on its type.
- * - For Plesk servers: detects the latest PHP version in /opt/plesk/php/
- * - For cPanel servers: uses /usr/local/bin/php
+ * - For Plesk® servers: detects the latest PHP version in /opt/plesk/php/
+ * - For cPanel® servers: uses /usr/local/bin/php
  * - Fallback: uses 'php' (system default)
  */
 export async function detectPhpBinary(serverId: string): Promise<PhpBinaryResult> {

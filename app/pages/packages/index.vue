@@ -183,7 +183,7 @@
                     variant="subtle"
                     size="sm"
                 >
-                  {{ row.original.source }}
+                  {{ row.original.source === 'wordpress.org' ? 'WordPress®.org' : row.original.source }}
                 </UBadge>
               </template>
             </UTable>
@@ -295,7 +295,7 @@
                     variant="subtle"
                     size="sm"
                 >
-                  {{ row.original.source }}
+                  {{ row.original.source === 'wordpress.org' ? 'WordPress®.org' : row.original.source }}
                 </UBadge>
               </template>
             </UTable>
@@ -752,7 +752,7 @@ const installedThemesNewerOnly = ref(false)
 
 // Source filter options
 const sourceFilterOptions = [
-  {label: 'WordPress.org', value: 'wordpress.org'},
+  {label: 'WordPress®.org', value: 'wordpress.org'},
   {label: 'External', value: 'external'}
 ]
 

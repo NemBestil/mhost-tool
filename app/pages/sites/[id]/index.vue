@@ -149,7 +149,7 @@
                     size="sm"
                     class="w-fit"
                   >
-                    {{ row.original.source }}
+                    {{ row.original.source === 'wordpress.org' ? 'WordPress®.org' : row.original.source }}
                   </UBadge>
                 </div>
               </template>
@@ -212,7 +212,7 @@
                     size="sm"
                     class="w-fit"
                   >
-                    {{ row.original.source }}
+                    {{ row.original.source === 'wordpress.org' ? 'WordPress®.org' : row.original.source }}
                   </UBadge>
                 </div>
               </template>
@@ -399,7 +399,7 @@
             color="warning"
             variant="soft"
             title="No notification is sent"
-            description="The WordPress user will not receive any notification about this email change."
+            description="The WordPress® user will not receive any notification about this email change."
           />
           <p class="text-sm text-neutral-500">
             Change email for <strong>{{ selectedUserForEmail?.user_login }}</strong>.

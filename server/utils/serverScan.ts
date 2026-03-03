@@ -53,19 +53,19 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
       ? '/home*/'
       : '/var/www/vhosts/'
 
-    sendEvent('log', `Searching for WordPress installations in ${searchPaths}...`)
+    sendEvent('log', `Searching for WordPress® installations in ${searchPaths}...`)
 
     const findCmd = `find ${searchPaths} -xdev \\( -type d \\( -name ".*" -o -name "cache" -o -name "node_modules" -o -name "vendor" -o -name "tmp" -o -name "logs" \\) -prune \\) -o -name "wp-config.php" -type f -print`
     const findResult = await ssh.exec(findCmd, { timeoutMs: 120000 })
 
     if (findResult.code !== 0 && !findResult.stdout) {
-      sendEvent('error', `Failed to search for WordPress installations: ${findResult.stderr}`)
+      sendEvent('error', `Failed to search for WordPress® installations: ${findResult.stderr}`)
       sendEvent('complete', 'Scan failed', { success: 0, failed: 1 })
       return { success: 0, failed: 1 }
     }
 
     const wpConfigPaths = findResult.stdout.trim().split('\n').filter(Boolean)
-    sendEvent('log', `Found ${wpConfigPaths.length} potential WordPress installations`)
+    sendEvent('log', `Found ${wpConfigPaths.length} potential WordPress® installations`)
 
     const validInstallations: string[] = []
     for (const wpConfigPath of wpConfigPaths) {
@@ -81,7 +81,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
       }
     }
 
-    sendEvent('log', `${validInstallations.length} valid WordPress installations found`)
+    sendEvent('log', `${validInstallations.length} valid WordPress® installations found`)
     sendEvent('progress', 'Starting detailed scan', { total: validInstallations.length, current: 0, success: 0, failed: 0 })
 
     sendEvent('log', 'Checking wp-cli installation...')
@@ -106,7 +106,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
     let phpBinary = '/usr/local/bin/php'
 
     if (server.serverType === 'PLESK') {
-      sendEvent('log', 'Detecting latest PHP version for Plesk...')
+      sendEvent('log', 'Detecting latest PHP version for Plesk®...')
       const detectPhpCmd = 'ls -1 /opt/plesk/php/ 2>/dev/null | sort -V | tail -1'
       const phpVersionResult = await ssh.exec(detectPhpCmd, { timeoutMs: 10000 })
       const latestPhpVersion = phpVersionResult.stdout.trim()
@@ -115,7 +115,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
         phpBinary = `/opt/plesk/php/${latestPhpVersion}/bin/php`
         sendEvent('log', `Using PHP binary: ${phpBinary}`)
       } else {
-        sendEvent('error', 'Could not detect Plesk PHP version, falling back to system php')
+        sendEvent('error', 'Could not detect Plesk® PHP version, falling back to system php')
         phpBinary = 'php'
       }
     } else {

@@ -35,8 +35,8 @@ const loading = ref(false)
 const toast = useToast()
 
 const serverTypeOptions = [
-  { label: 'Plesk', value: 'PLESK' },
-  { label: 'cPanel/WHM', value: 'CPANEL_WHM' }
+  { label: 'Plesk®', value: 'PLESK' },
+  { label: 'cPanel®', value: 'CPANEL_WHM' }
 ]
 
 const {

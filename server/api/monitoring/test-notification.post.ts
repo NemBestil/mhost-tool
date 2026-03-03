@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
       body: {
         token: body.token,
         user: body.userKey,
-        message: 'This is a test notification from your WordPress Management tool.',
+        message: 'This is a test notification from your WordPress® Management tool.',
         title: 'Test Notification'
       }
     })

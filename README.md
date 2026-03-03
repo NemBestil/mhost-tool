@@ -1,20 +1,28 @@
 <img src="README-banner.png" />
 
-MHost is a self-hosted dashboard for managing WordPress installations across multiple servers. It is specifically designed for **WordPress-server administrators** running **Plesk** or **cPanel/WHM**.
+MHost is a self-hosted dashboard for managing WordPress® installations across multiple servers. It is specifically designed for **WordPress®-server administrators** running **Plesk®** or **cPanel®**.
 
 > [!IMPORTANT]
-> MHost requires **root SSH access** to your server(s) to manage your WordPress sites. This is a power-tool for sysadmins to easily manage 100+ sites on many servers. It's thus not for webmasters on shared hosting platforms.
+> MHost requires **root SSH access** to your server(s) to manage your WordPress® sites. This is a power-tool for sysadmins to easily manage 100+ sites on many servers. It's thus not for webmasters on shared hosting platforms.
 
 > [!WARNING]
 > **Alpha software**: MHost is currently in alpha. There is no stable release yet, and breaking changes can happen.
 
+## Legal Disclaimer
+
+MHost is an independent, open-source project. It is **not** affiliated with, sponsored by, or endorsed by WordPress®, Automattic, Plesk, cPanel, or any of their trademarks. 
+
+- WordPress® is a trademark of the WordPress Foundation.
+- Plesk is a trademark of Plesk International GmbH.
+- cPanel is a trademark of cPanel, L.L.C.
+
 ## Main Features
 
 - Server inventory with SSH validation
-- WordPress site discovery (scan servers and collect sites)
+- WordPress® site discovery (scan servers and collect sites)
 - Site overview with last scan time and availability status (CVE score visibility coming soon)
-- One-click WordPress login helper
-- WordPress user operations (list users, change email, set/reset password)
+- One-click WordPress® login helper
+- WordPress® user operations (list users, change email, set/reset password)
 - Plugin/theme management:
   - Inspect installed plugins/themes across sites
   - Upload private plugins/themes as ZIP files
@@ -24,10 +32,11 @@ MHost is a self-hosted dashboard for managing WordPress installations across mul
 
 ## Why MHost
 
-- Single deployable Docker image
-- SQLite database (no separate database service required)
-- Built-in DB migrations on startup
-- Persistent uploads and data via mounted volumes
+MHost is built for **digital sovereignty**. In an era of SaaS-dependency, MHost empowers you to maintain **full control** over your own infrastructure and data. It is **fully open source** and self-hosted, ensuring that you are never locked into a proprietary platform.
+
+- **Full Control**: You own the data, the code, and the infrastructure.
+- **Single Docker image**: Easy and uncomplicated to host on your own server.
+- **Persistent uploads and data via mounted volumes**: Your data stays with you.
 
 ## Run with Docker Image
 
