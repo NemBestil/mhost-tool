@@ -24,6 +24,7 @@ type SiteUser = {
 
 export default defineEventHandler(async (event) => {
   const installationId = requireSiteId(getRouterParam(event, 'id'))
+  const query = getQuery(event)
 
   const installation = await getSiteInstallationContext(installationId)
   if (!installation) {
@@ -47,6 +48,16 @@ export default defineEventHandler(async (event) => {
     .filter((user): user is SiteUser => Boolean(user))
     .sort((a, b) => a.user_login.localeCompare(b.user_login))
 
+  const requestedRoles = parseRoleFilter(query.role)
+  const filteredUsers = requestedRoles.length > 0
+    ? users.filter(user => user.roles.some(role => requestedRoles.includes(role)))
+    : users
+
+  const page = parsePositiveInteger(query.page, 1)
+  const limit = parseLimit(query.limit)
+  const start = limit === null ? 0 : (page - 1) * limit
+  const pagedUsers = limit === null ? filteredUsers : filteredUsers.slice(start, start + limit)
+
   const roleSet = new Set<string>()
   for (const user of users) {
     for (const role of user.roles) {
@@ -57,8 +68,14 @@ export default defineEventHandler(async (event) => {
   }
 
   return {
-    users,
+    users: pagedUsers,
     roles: [...roleSet].sort((a, b) => a.localeCompare(b)),
+    pagination: {
+      page,
+      limit,
+      total: filteredUsers.length,
+      totalPages: limit === null ? 1 : Math.max(1, Math.ceil(filteredUsers.length / limit))
+    },
     autoLoginUser: installation.autoLoginUser
   }
 })
@@ -86,4 +103,35 @@ function normalizeUser(raw: RawWpUser): SiteUser | null {
     user_email,
     roles
   }
+}
+
+function parseRoleFilter(input: unknown): string[] {
+  const values = Array.isArray(input) ? input : typeof input === 'string' ? [input] : []
+
+  return values
+    .flatMap(value => value.split(','))
+    .map(value => value.trim())
+    .filter(Boolean)
+}
+
+function parsePositiveInteger(input: unknown, fallback: number): number {
+  if (typeof input !== 'string') {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(input, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function parseLimit(input: unknown): number | null {
+  if (typeof input !== 'string' || !input.trim()) {
+    return null
+  }
+
+  const parsed = Number.parseInt(input, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+
+  return Math.min(parsed, 500)
 }

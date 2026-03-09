@@ -101,6 +101,7 @@
       </UCard>
 
       <UTabs
+        v-model="activeTab"
         :items="tabItems"
         class="flex-1 flex flex-col min-h-0"
         :ui="{ content: 'flex-1 flex flex-col min-h-0' }"
@@ -258,7 +259,7 @@
               <USelectMenu
                 v-model="selectedRole"
                 :items="roleOptions"
-                value-attribute="value"
+                value-key="value"
                 placeholder="Filter by role"
                 class="w-56"
                 clear
@@ -267,6 +268,10 @@
                   <UIcon name="i-lucide-shield-user" class="size-4" />
                 </template>
               </USelectMenu>
+
+              <div class="ml-auto text-sm text-neutral-500">
+                {{ userPagination.total }} user{{ userPagination.total === 1 ? '' : 's' }}
+              </div>
             </div>
 
             <UTable :data="filteredUsers" :columns="usersColumns" :loading="usersStatus === 'pending'" sticky class="flex-1 overflow-auto">
@@ -326,6 +331,32 @@
                 </div>
               </template>
             </UTable>
+
+            <div
+              v-if="userPagination.totalPages > 1"
+              class="flex items-center justify-between gap-4 text-sm text-neutral-500"
+            >
+              <span>
+                Page {{ userPagination.page }} of {{ userPagination.totalPages }}
+              </span>
+
+              <div class="flex items-center gap-2">
+                <UButton
+                  label="Previous"
+                  color="neutral"
+                  variant="outline"
+                  :disabled="usersPage <= 1 || usersStatus === 'pending'"
+                  @click="usersPage -= 1"
+                />
+                <UButton
+                  label="Next"
+                  color="neutral"
+                  variant="outline"
+                  :disabled="usersPage >= userPagination.totalPages || usersStatus === 'pending'"
+                  @click="usersPage += 1"
+                />
+              </div>
+            </div>
           </div>
         </template>
 
@@ -438,28 +469,28 @@ type SiteUser = {
 type SiteUsersResponse = {
   users: SiteUser[]
   roles: string[]
+  pagination: {
+    page: number
+    limit: number | null
+    total: number
+    totalPages: number
+  }
   autoLoginUser: string | null
 }
 
 const route = useRoute()
+const router = useRouter()
 const siteId = route.params.id as string
 const toast = useToast()
 const queryClient = useQueryClient()
 const packageJobStore = usePackageJobStore()
 
+const tabValues = ['plugins', 'themes', 'users', 'tweaks'] as const
+type SiteTab = typeof tabValues[number]
+
 const { data: site, status } = useQuery<SiteDetails>({
   queryKey: ['site', siteId],
   queryFn: () => useApiClient()(`/sites/${siteId}`)
-})
-
-const {
-  data: siteUsers,
-  status: usersStatus,
-  refetch: refetchUsers
-} = useQuery<SiteUsersResponse>({
-  queryKey: ['site-users', siteId],
-  queryFn: () => useApiClient()(`/sites/${siteId}/users`),
-  enabled: computed(() => Boolean(site.value))
 })
 
 definePageMeta({
@@ -470,24 +501,36 @@ const tabItems = [
   {
     label: 'Plugins',
     icon: 'i-lucide-plug',
+    value: 'plugins',
     slot: 'plugins'
   },
   {
     label: 'Themes',
     icon: 'i-lucide-palette',
+    value: 'themes',
     slot: 'themes'
   },
   {
     label: 'Users',
     icon: 'i-lucide-users',
+    value: 'users',
     slot: 'users'
   },
   {
     label: 'Tweaks',
     icon: 'i-lucide-settings-2',
+    value: 'tweaks',
     slot: 'tweaks'
   }
 ]
+
+const getRouteTab = (value: unknown): SiteTab => {
+  return typeof value === 'string' && tabValues.includes(value as SiteTab)
+    ? value as SiteTab
+    : 'plugins'
+}
+
+const activeTab = ref<SiteTab>(getRouteTab(route.query.tab))
 
 const pluginColumns = [
   {
@@ -553,13 +596,30 @@ const usersColumns: TableColumn<SiteUser>[] = [
 ]
 
 const usersSearch = ref('')
-const selectedRole = ref<{ label: string, value: string } | null>(null)
+const selectedRole = ref<string | null>('administrator')
+const usersPage = ref(1)
 const autoLoginBusyUser = ref<string | null>(null)
+
+const {
+  data: siteUsers,
+  status: usersStatus,
+  refetch: refetchUsers
+} = useQuery<SiteUsersResponse>({
+  queryKey: ['site-users', siteId, selectedRole, usersPage],
+  queryFn: () => useApiClient()(`/sites/${siteId}/users`, {
+    query: {
+      role: selectedRole.value || undefined,
+      page: usersPage.value,
+      limit: 100
+    }
+  }),
+  enabled: computed(() => Boolean(site.value))
+})
 
 const users = computed(() => siteUsers.value?.users || [])
 const roleOptions = computed(() => {
   return (siteUsers.value?.roles || []).map(role => ({
-    label: role,
+      label: role,
     value: role
   }))
 })
@@ -567,7 +627,7 @@ const roleOptions = computed(() => {
 const filteredUsers = computed(() => {
   let result = users.value
 
-  const role = selectedRole.value?.value
+  const role = selectedRole.value
   if (role) {
     result = result.filter(user => user.roles.includes(role))
   }
@@ -582,6 +642,37 @@ const filteredUsers = computed(() => {
   }
 
   return result
+})
+
+const userPagination = computed(() => siteUsers.value?.pagination ?? {
+  page: 1,
+  limit: 100,
+  total: 0,
+  totalPages: 1
+})
+
+watch(selectedRole, () => {
+  usersPage.value = 1
+})
+
+watch(() => route.query.tab, (value) => {
+  const nextTab = getRouteTab(value)
+  if (nextTab !== activeTab.value) {
+    activeTab.value = nextTab
+  }
+})
+
+watch(activeTab, async (value) => {
+  if (value === getRouteTab(route.query.tab)) {
+    return
+  }
+
+  await router.replace({
+    query: {
+      ...route.query,
+      tab: value
+    }
+  })
 })
 
 const setPasswordModalOpen = ref(false)
@@ -675,7 +766,7 @@ const setAutoLoginUser = async (user: SiteUser, enabled: boolean) => {
       }
     })
 
-    queryClient.setQueryData(['site-users', siteId], (current: SiteUsersResponse | undefined) => {
+    queryClient.setQueriesData({ queryKey: ['site-users', siteId] }, (current: SiteUsersResponse | undefined) => {
       if (!current) return current
       return {
         ...current,

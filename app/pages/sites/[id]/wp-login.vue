@@ -18,6 +18,13 @@
           Select the user that should be used for one-click login.
         </p>
 
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">
+          Only administrator, editor, and shop_manager users are listed here.
+          <NuxtLink :to="`/sites/${siteId}?tab=users`" class="text-primary hover:underline">
+            The complete user list is available on the site details page.
+          </NuxtLink>
+        </p>
+
         <USelectMenu
             v-model="selectedUser"
             :items="userOptions"
@@ -55,7 +62,7 @@
         />
         <div class="flex justify-end gap-2">
           <UButton color="neutral" variant="outline" to="/sites" label="Back to sites"/>
-          <UButton :to="`/sites/${siteId}`" label="Open site details"/>
+          <UButton :to="`/sites/${siteId}?tab=users`" label="Open site details"/>
         </div>
       </div>
     </UCard>
@@ -123,7 +130,7 @@ const confirmAutoLoginUser = async () => {
 
 onMounted(async () => {
   try {
-    const usersResponse = await useApiClient()(`/sites/${siteId}/users`) as {
+    const usersResponse = await useApiClient()(`/sites/${siteId}/users?role=administrator,editor,shop_manager`) as {
       users: Array<{
         user_login: string
         display_name: string
@@ -145,7 +152,7 @@ onMounted(async () => {
     }
 
     if (userOptions.value.length === 0) {
-      throw new Error('No users were found on this site.')
+      throw new Error('No administrator, editor, or shop_manager users were found on this site.')
     }
 
     selectedUser.value = userOptions.value[0]?.value || null
