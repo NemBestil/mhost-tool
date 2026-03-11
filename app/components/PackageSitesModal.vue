@@ -17,11 +17,13 @@
 
           <template v-else>
             <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="text-sm text-neutral-500">
-                Latest version:
-                <UBadge color="primary" variant="outline" v-if="latestVersion" >{{ latestVersion }}</UBadge>
-                <UBadge color="warning" v-else>Not available</UBadge>
-              </div>
+              <UInput
+                v-model="searchQuery"
+                placeholder="Search sites..."
+                icon="i-lucide-search"
+                class="w-64"
+                :disabled="isProcessing"
+              />
               <div class="flex items-center gap-2 flex-wrap">
                 <UButton
                   :label="`Update (${selectedOutdatedSites.length})`"
@@ -63,7 +65,7 @@
             </div>
 
             <UTable
-              :data="sites"
+              :data="filteredSites"
               :columns="siteColumns"
               class="max-h-[60vh]"
               sticky
@@ -205,10 +207,14 @@ const selectedInstallationIds = ref<string[]>([])
 const isProcessing = ref(false)
 const currentAction = ref<'update' | PackageAction | null>(null)
 const pendingOperations = ref<Record<string, PendingOperation>>({})
+const searchQuery = ref('')
 
 const modalTitle = computed(() => {
   if (!props.packageDetails) return ''
   const typeLabel = props.packageDetails.kind === 'installed-plugins' ? 'Plugin' : 'Theme'
+  if (latestVersion.value) {
+    return `${typeLabel}: ${props.packageDetails.title || props.packageDetails.slug} (Latest ${latestVersion.value})`
+  }
   return `${typeLabel}: ${props.packageDetails.title || props.packageDetails.slug}`
 })
 
@@ -239,10 +245,19 @@ const {
 const sites = computed(() => sitesResponse.value?.sites || [])
 const latestVersion = computed(() => sitesResponse.value?.latestVersion || null)
 const isLoading = computed(() => isPending.value && !sitesResponse.value)
+const filteredSites = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return sites.value
+
+  return sites.value.filter(site => (
+    site.siteTitle.toLowerCase().includes(query)
+    || site.siteUrl.toLowerCase().includes(query)
+  ))
+})
 
 const pendingInstallationIds = computed(() => new Set(Object.keys(pendingOperations.value)))
 const selectableSites = computed(() => {
-  return sites.value.filter(site => !pendingInstallationIds.value.has(site.installationId))
+  return filteredSites.value.filter(site => !pendingInstallationIds.value.has(site.installationId))
 })
 const selectedSites = computed(() => {
   const selected = new Set(selectedInstallationIds.value)
@@ -425,6 +440,7 @@ const toggleRow = (installationId: string, checked: boolean) => {
 watch(() => props.packageDetails, (details) => {
   selectedInstallationIds.value = []
   pendingOperations.value = {}
+  searchQuery.value = ''
 
   if (isOpen.value && details && !isFetching.value) {
     refetchSites()
@@ -440,6 +456,7 @@ watchThrottled(() => packageJobStore.lastCompletedProgress?.updatedAt, (updatedA
 watch(() => sitesResponse.value?.sites, () => {
   reconcilePendingOperations()
   selectedInstallationIds.value = []
+  searchQuery.value = ''
 })
 
 const isRowPending = (installationId: string): boolean => {

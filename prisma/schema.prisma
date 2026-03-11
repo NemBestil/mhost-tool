@@ -84,10 +84,37 @@ model WordPressInstallation {
   monitoringFailedAttempts     Int               @default(0)
   plugins                      WordPressPlugin[]
   themes                       WordPressTheme[]
+  customFileDeployments        CustomFileDeployment[]
   monitoringEvents             MonitoringEvent[]
 
   @@unique([serverId, installationPath])
   @@map("wordpress_installations")
+}
+
+model CustomFile {
+  id               String                 @id @default(cuid())
+  originalFilename String
+  storagePath      String
+  relativePath     String
+  uploadedAt       DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  deployments      CustomFileDeployment[]
+
+  @@map("custom_files")
+}
+
+model CustomFileDeployment {
+  id                   String                @id @default(cuid())
+  customFileId         String
+  installationId       String
+  customFile           CustomFile            @relation(fields: [customFileId], references: [id], onDelete: Cascade)
+  installation         WordPressInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  deployedAt           DateTime              @default(now())
+  deployedRelativePath String
+
+  @@unique([customFileId, installationId])
+  @@index([installationId])
+  @@map("custom_file_deployments")
 }
 
 model WordPressPlugin {

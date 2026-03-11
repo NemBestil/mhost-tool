@@ -58,6 +58,12 @@ const links = computed<NavigationMenuItem[][]>(() => [
       active: route.path.startsWith('/packages')
     },
     {
+      to: '/custom-files',
+      icon: 'i-lucide-file-up',
+      label: 'Custom files',
+      active: route.path.startsWith('/custom-files')
+    },
+    {
       to: '/monitoring',
       icon: 'i-lucide-activity',
       label: 'Monitoring',

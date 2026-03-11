@@ -596,7 +596,7 @@ const usersColumns: TableColumn<SiteUser>[] = [
 ]
 
 const usersSearch = ref('')
-const selectedRole = ref<string | null>('administrator')
+const selectedRole = ref<string | undefined>('administrator')
 const usersPage = ref(1)
 const autoLoginBusyUser = ref<string | null>(null)
 
