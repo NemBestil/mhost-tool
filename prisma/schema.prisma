@@ -84,11 +84,47 @@ model WordPressInstallation {
   monitoringFailedAttempts     Int               @default(0)
   plugins                      WordPressPlugin[]
   themes                       WordPressTheme[]
+  wpMailSmtp                   WordPressInstallationWpMailSmtp?
   customFileDeployments        CustomFileDeployment[]
   monitoringEvents             MonitoringEvent[]
 
   @@unique([serverId, installationPath])
   @@map("wordpress_installations")
+}
+
+model WordPressInstallationWpMailSmtp {
+  id                      String                @id @default(cuid())
+  installationId          String                @unique
+  installation            WordPressInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  pluginInstalled         Boolean               @default(false)
+  pluginIsActive          Boolean               @default(false)
+  pluginSlug              String?
+  pluginVersion           String?
+  provider                String?
+  fromEmail               String?
+  fromName                String?
+  smtpHost                String?
+  smtpEncryption          String?
+  smtpPort                Int?
+  smtpAuthentication      Boolean?
+  smtpUsername            String?
+  amazonSesAccessKeyId    String?
+  amazonSesRegion         String?
+  amazonSesCredentialsValid Boolean?
+  amazonSesLastCheckedAt  DateTime?
+  amazonSesErrorMessage   String?
+  amazonSesDnsVerified    Boolean?
+  amazonSesIdentity       String?
+  amazonSesIdentityStatus String?
+  logEmails               Boolean?
+  logRetentionPeriod      String?
+  logEmailContent         Boolean?
+  hideAnnouncements       Boolean?
+  disableEmailSummaries   Boolean?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  @@map("wordpress_installation_wp_mail_smtp")
 }
 
 model CustomFile {

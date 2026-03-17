@@ -1,230 +1,147 @@
 <template>
   <NuxtLayout name="dashboard-page">
-    <div class="p-4 max-w-3xl mx-auto">
-      <UCard>
-        <template #header>
-          <h3 class="font-medium">E-mail configuration</h3>
-        </template>
+    <SettingsSetupNavigation />
 
-        <div class="space-y-4">
-          <p class="text-sm text-neutral-500">
-            Configure SMTP for e-mail notifications. This is required before monitoring e-mails can be enabled.
-          </p>
+    <div class="flex-1 flex flex-col min-h-0">
 
-          <div class="grid grid-cols-1 gap-3">
-            <UFormField label="SMTP host and port">
-              <UFieldGroup class="w-full">
-                <UInput v-model="form.host" placeholder="smtp.example.com" :disabled="isSaving || isTesting"
-                        :color="getFieldError('host') ? 'error' : undefined"
-                        class="w-full"/>
-                <UInput v-model.number="form.port" type="number" min="1" max="65535" :disabled="isSaving || isTesting"
-                        :color="getFieldError('port') ? 'error' : undefined"/>
-              </UFieldGroup>
-              <p v-if="getFieldError('host')" class="mt-1 text-sm text-error">{{ getFieldError('host') }}</p>
-              <p v-if="getFieldError('port')" class="mt-1 text-sm text-error">{{ getFieldError('port') }}</p>
-            </UFormField>
+      <div class="p-4 max-w-5xl mx-auto w-full space-y-4">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <UCard>
+            <template #header>
+              <h3 class="font-medium">Setup pages</h3>
+            </template>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <UFormField>
-                <template #label>
-                  STARTTLS or TLS
-                  <UTooltip text="If true, the connection uses TLS immediately upon connecting. Set this to true when connecting to port 465. For port 587 or 25, leave this as false and let STARTTLS upgrade the connection." :content="{side: 'top'}">
-                    <button type="button" class="inline-flex items-center gap-1 text-sm text-neutral-500">
-                      <UIcon name="i-lucide-info" class="size-3.5" />
-                    </button>
-                  </UTooltip>
-                </template>
-                <USwitch v-model="form.secure" :disabled="isSaving || isTesting"/>
-              </UFormField>
-              <UFormField label="SASL auth method" :error="getFieldError('authMethod')">
-                <USelect
-                  v-model="form.authMethod"
-                  :items="smtpAuthMethodOptions"
-                  value-key="value"
-                  :disabled="isSaving || isTesting"
-                  :color="getFieldError('authMethod') ? 'error' : undefined"
-                  class="w-full"
-                />
-              </UFormField>
-              <UFormField label="SMTP username" :error="getFieldError('authUser')">
-                <UInput v-model="form.authUser" placeholder="mailer@example.com" :disabled="isSaving || isTesting"
-                        :color="getFieldError('authUser') ? 'error' : undefined" class="w-full" />
-              </UFormField>
-              <UFormField label="SMTP password" :error="getFieldError('authPass')">
-                <UInput v-model="form.authPass" type="password" :disabled="isSaving || isTesting"
-                        :color="getFieldError('authPass') ? 'error' : undefined" class="w-full"/>
-              </UFormField>
-              <UFormField label="From name" :error="getFieldError('fromName')">
-                <UInput v-model="form.fromName" placeholder="MHost" :disabled="isSaving || isTesting"
-                        :color="getFieldError('fromName') ? 'error' : undefined" class="w-full"/>
-              </UFormField>
-              <UFormField label="From e-mail" :error="getFieldError('fromEmail')">
-                <UInput v-model="form.fromEmail" placeholder="monitor@example.com" :disabled="isSaving || isTesting"
-                        :color="getFieldError('fromEmail') ? 'error' : undefined" class="w-full"/>
-              </UFormField>
-            </div>
-          </div>
+            <div class="space-y-3">
+              <p class="text-sm text-neutral-500">
+                Use the sections below to configure global setup defaults.
+              </p>
 
-          <div class="flex flex-wrap gap-2 justify-end">
-            <UPopover>
-              <UButton
-                  color="neutral"
-                  variant="outline"
-                  label="Send test e-mail"
-                  icon="i-lucide-send"
-                  :loading="isTesting"
-                  :disabled="!canSendTestEmail || isSaving"
-              />
-              <template #content>
-                <div class="p-4 w-full space-y-3">
-                  <UFormField label="Test recipient (optional)" :error="getFieldError('toEmail')">
-                    <UInput
-                        v-model="testRecipient"
-                        placeholder="alerts@example.com"
-                        :disabled="isSaving || isTesting"
-                        :color="getFieldError('toEmail') ? 'error' : undefined"
-                        @keyup.enter="sendTestEmail"
-                    />
-                  </UFormField>
+              <div
+                v-for="page in pages"
+                :key="page.title"
+                class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 space-y-2"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-medium">{{ page.title }}</p>
+                    <p class="text-sm text-neutral-500">{{ page.description }}</p>
+                  </div>
+                  <UBadge :color="page.available ? 'success' : 'neutral'" variant="soft">
+                    {{ page.available ? 'Available' : 'Disabled' }}
+                  </UBadge>
+                </div>
+
+                <div class="flex justify-end">
                   <UButton
-                      label="Send test e-mail"
-                      icon="i-lucide-send"
-                      block
-                      :loading="isTesting"
-                      :disabled="!canSendTestEmail || isSaving"
-                      @click="sendTestEmail"
+                    v-if="page.available"
+                    :to="page.to"
+                    size="sm"
+                    variant="outline"
+                    label="Open"
                   />
                 </div>
-              </template>
-            </UPopover>
-            <UButton
-                label="Save settings"
-                icon="i-lucide-save"
-                :loading="isSaving"
-                :disabled="isTesting"
-                @click="saveSettings"
-            />
-          </div>
+              </div>
+            </div>
+          </UCard>
+
+          <UCard>
+            <template #header>
+              <h3 class="font-medium">Features</h3>
+            </template>
+
+            <div class="space-y-4">
+              <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1">
+                    <p class="font-medium">WP Mail SMTP Pro config</p>
+                    <p class="text-sm text-neutral-500">
+                      Enable a dedicated setup page for creating default WP Mail SMTP Pro configurations.
+                    </p>
+                  </div>
+                  <USwitch v-model="form.features.wpMailSmtpPro" :disabled="isSaving" />
+                </div>
+
+                <p class="mt-3 text-xs text-neutral-500">
+                  When enabled, both a new Setup subpage and a main navigation entry appear.
+                </p>
+              </div>
+
+              <div class="flex justify-end">
+                <UButton
+                  label="Save settings"
+                  icon="i-lucide-save"
+                  :loading="isSaving"
+                  :disabled="!hasChanges"
+                  @click="saveSettings"
+                />
+              </div>
+            </div>
+          </UCard>
         </div>
-      </UCard>
+      </div>
     </div>
   </NuxtLayout>
 </template>
 
 <script lang="ts" setup>
-import {useQuery} from '@tanstack/vue-query'
-
 definePageMeta({
-  title: 'Main settings'
+  title: 'Setup'
 })
-
-type SmtpForm = {
-  host: string
-  port: number
-  secure: boolean
-  authMethod: 'PLAIN' | 'LOGIN' | 'CRAM-MD5'
-  authUser: string
-  authPass: string
-  fromName: string
-  fromEmail: string
-}
-
-type MainSettingsResponse = {
-  smtp: SmtpForm | null
-  smtpConfigured: boolean
-}
-
-type SmtpFieldErrorPath = keyof SmtpForm | 'toEmail'
 
 const toast = useToast()
 
-const {data, refetch} = useQuery<MainSettingsResponse>({
-  queryKey: ['main-settings'],
-  queryFn: () => useApiClient()('/settings/main')
+const { data, refetch } = useSetupSettingsQuery()
+
+const form = reactive({
+  features: {
+    wpMailSmtpPro: false
+  }
 })
 
-const form = reactive<SmtpForm>({
-  host: '',
-  port: 587,
-  secure: false,
-  authMethod: 'PLAIN',
-  authUser: '',
-  authPass: '',
-  fromName: '',
-  fromEmail: ''
-})
-
-const testRecipient = ref('')
-const isTestPopoverOpen = ref(false)
 const isSaving = ref(false)
-const isTesting = ref(false)
-const fieldErrors = ref<Partial<Record<SmtpFieldErrorPath, string>>>({})
-const smtpAuthMethodOptions = [
-  { label: 'PLAIN', value: 'PLAIN' },
-  { label: 'LOGIN', value: 'LOGIN' },
-  { label: 'CRAM-MD5', value: 'CRAM-MD5' }
-] as const
 
 watch(data, (value) => {
-  if (!value?.smtp) return
-
-  Object.assign(form, value.smtp)
-}, {immediate: true})
-
-watch(() => form.port, (port) => {
-  if (port === 465) {
-    form.secure = true
+  if (!value) {
     return
   }
 
-  if (port === 587) {
-    form.secure = false
-  }
+  form.features.wpMailSmtpPro = value.features.wpMailSmtpPro
+}, { immediate: true })
+
+const hasChanges = computed(() => {
+  return form.features.wpMailSmtpPro !== Boolean(data.value?.features.wpMailSmtpPro)
 })
 
-const canSendTestEmail = computed(() => {
-  const port = Number(form.port)
-  return (
-    form.host.trim().length > 0 &&
-    Number.isInteger(port) &&
-    port > 0 &&
-    port <= 65535 &&
-    form.authUser.trim().length > 0 &&
-    form.authPass.length > 0 &&
-    form.fromName.trim().length > 0 &&
-    form.fromEmail.trim().length > 0
-  )
-})
-
-const getFieldError = (field: SmtpFieldErrorPath) => fieldErrors.value[field]
-
-const setFieldErrors = (errors: Record<string, string>) => {
-  fieldErrors.value = {
-    host: errors.host,
-    port: errors.port,
-    authMethod: errors.authMethod,
-    authUser: errors.authUser,
-    authPass: errors.authPass,
-    fromName: errors.fromName,
-    fromEmail: errors.fromEmail,
-    toEmail: errors.toEmail
+const pages = computed(() => [
+  {
+    title: 'Overview',
+    description: 'Enable or disable optional setup features.',
+    to: '/settings/main',
+    available: true
+  },
+  {
+    title: 'Notifications',
+    description: 'Configure SMTP for MHost notification e-mails.',
+    to: '/settings/notifications',
+    available: true
+  },
+  {
+    title: 'WP Mail SMTP Pro',
+    description: 'Manage named WP Mail SMTP Pro configurations.',
+    to: '/settings/wp-mail-smtp-pro',
+    available: form.features.wpMailSmtpPro
   }
-}
+])
 
 const saveSettings = async () => {
   isSaving.value = true
-  fieldErrors.value = {}
+
   try {
     await useApiClient()('/settings/main', {
       method: 'PUT',
       body: {
-        smtp: {
-          ...form,
-          port: Number(form.port),
-          host: form.host.trim(),
-          authUser: form.authUser.trim(),
-          fromName: form.fromName.trim(),
-          fromEmail: form.fromEmail.trim()
+        features: {
+          wpMailSmtpPro: form.features.wpMailSmtpPro
         }
       }
     })
@@ -233,64 +150,17 @@ const saveSettings = async () => {
 
     toast.add({
       title: 'Saved',
-      description: 'SMTP settings have been updated.',
+      description: 'Setup settings have been updated.',
       color: 'success'
     })
   } catch (error: any) {
-    if (error.data?.data?.fieldErrors) {
-      setFieldErrors(error.data.data.fieldErrors)
-    }
-
     toast.add({
       title: 'Error',
-      description: error.data?.message || 'Failed to save SMTP settings.',
+      description: error.data?.message || 'Failed to save setup settings.',
       color: 'error'
     })
   } finally {
     isSaving.value = false
-  }
-}
-
-const sendTestEmail = async () => {
-  if (!canSendTestEmail.value) {
-    return
-  }
-
-  isTesting.value = true
-  fieldErrors.value = {}
-  try {
-    await useApiClient()('/settings/smtp-test', {
-      method: 'POST',
-      body: {
-        smtp: {
-          ...form,
-          port: Number(form.port),
-          host: form.host.trim(),
-          authUser: form.authUser.trim(),
-          fromName: form.fromName.trim(),
-          fromEmail: form.fromEmail.trim()
-        },
-        toEmail: testRecipient.value.trim() || undefined
-      }
-    })
-
-    toast.add({
-      title: 'Test sent',
-      description: 'SMTP test e-mail has been sent.',
-      color: 'success'
-    })
-  } catch (error: any) {
-    if (error.data?.data?.fieldErrors) {
-      setFieldErrors(error.data.data.fieldErrors)
-    }
-
-    toast.add({
-      title: 'Error',
-      description: error.data?.message || 'Failed to send test e-mail.',
-      color: 'error'
-    })
-  } finally {
-    isTesting.value = false
   }
 }
 </script>

@@ -1,7 +1,14 @@
 import { prisma } from '#server/utils/db'
-import { openSshConnection, type SshConnection } from '#server/utils/ssh'
+import { openSshConnection, type SshConnection, type SshSession } from '#server/utils/ssh'
 import { broadcastScanEvent, type BroadcastEvent } from '#server/utils/scanBroadcast'
 import { getOrCreateMonitoringConfig } from '#server/utils/monitoring'
+import { validateAmazonSesCredentials } from '#server/utils/amazonSes'
+import {
+  normalizeWpMailSmtpScanRecord,
+  pickWpMailSmtpPlugin,
+  type WpMailSmtpPluginInfo
+} from '#server/utils/wpMailSmtp'
+import { shellEscape } from '#server/utils/siteWpCli'
 
 type ServerForScan = {
   id: string
@@ -17,6 +24,64 @@ type ScanEventType = 'log' | 'progress' | 'error' | 'complete'
 export type ServerScanResult = {
   success: number
   failed: number
+}
+
+function buildWpCliCommand(
+  unixUser: string,
+  wpDir: string,
+  phpBinary: string,
+  args: string[],
+  options: {
+    skipPlugins?: boolean
+    skipThemes?: boolean
+  } = {}
+) {
+  const commandArgs = [...args]
+
+  if (options.skipPlugins !== false) {
+    commandArgs.push('--skip-plugins')
+  }
+
+  if (options.skipThemes !== false) {
+    commandArgs.push('--skip-themes')
+  }
+
+  const command = [phpBinary, '/opt/mhost-cli/wp-cli.phar', ...commandArgs]
+    .map(shellEscape)
+    .join(' ')
+
+  return `su - ${unixUser} -s /bin/bash -c ${shellEscape(`cd ${wpDir} && ${command}`)}`
+}
+
+async function getWpMailSmtpOptions(
+  session: SshSession,
+  unixUser: string,
+  wpDir: string,
+  phpBinary: string
+) {
+  const command = buildWpCliCommand(
+    unixUser,
+    wpDir,
+    phpBinary,
+    ['eval', 'echo wp_json_encode( get_option( "wp_mail_smtp", [] ) );'],
+    {
+      skipPlugins: true,
+      skipThemes: true
+    }
+  )
+
+  const result = await session.exec(command, { timeoutMs: 30_000 })
+  const raw = result.stdout.trim()
+
+  if (!raw) {
+    return null
+  }
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
 }
 
 function sendScanEvent(serverId: string, type: ScanEventType, message: string, data?: any) {
@@ -232,9 +297,17 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
 
         sendEvent('log', `Getting plugins for ${siteTitle}...`)
         const pluginsCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar plugin list --format=json --fields=name,title,status,update,version,update_version,auto_update --skip-plugins --skip-themes 2>/dev/null'`
+        let wpMailSmtpPlugin: WpMailSmtpPluginInfo | null = null
         try {
           const pluginsResult = await session.exec(pluginsCmd, { timeoutMs: 60000 })
           const plugins = JSON.parse(pluginsResult.stdout.trim() || '[]')
+          wpMailSmtpPlugin = pickWpMailSmtpPlugin(
+            plugins.map((plugin: any) => ({
+              slug: plugin.name || null,
+              version: plugin.version || null,
+              isEnabled: plugin.status === 'active'
+            }))
+          )
 
           await prisma.wordPressPlugin.deleteMany({
             where: { installationId: installation.id }
@@ -289,6 +362,42 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
           sendEvent('log', `Saved ${plugins.length} plugins`)
         } catch (e) {
           sendEvent('error', `Failed to get plugins: ${e}`)
+        }
+
+        sendEvent('log', `Reading WP Mail SMTP settings for ${siteTitle}...`)
+        try {
+          const wpMailSmtpOptions = await getWpMailSmtpOptions(session, unixUser, wpDir, phpBinary)
+          const wpMailSmtpProvider = typeof wpMailSmtpOptions?.mail?.mailer === 'string'
+            ? wpMailSmtpOptions.mail.mailer
+            : null
+          const wpMailSmtpSesValidation = wpMailSmtpProvider === 'amazonses'
+            && typeof wpMailSmtpOptions?.amazonses?.client_id === 'string'
+            && typeof wpMailSmtpOptions?.amazonses?.client_secret === 'string'
+            && typeof wpMailSmtpOptions?.amazonses?.region === 'string'
+            ? await validateAmazonSesCredentials({
+                accessKeyId: wpMailSmtpOptions.amazonses.client_id.trim(),
+                secretAccessKey: wpMailSmtpOptions.amazonses.client_secret,
+                region: wpMailSmtpOptions.amazonses.region.trim()
+              })
+            : null
+          const wpMailSmtpScan = normalizeWpMailSmtpScanRecord(
+            wpMailSmtpOptions,
+            wpMailSmtpPlugin,
+            wpMailSmtpSesValidation
+          )
+
+          await prisma.wordPressInstallationWpMailSmtp.upsert({
+            where: {
+              installationId: installation.id
+            },
+            update: wpMailSmtpScan,
+            create: {
+              installationId: installation.id,
+              ...wpMailSmtpScan
+            }
+          })
+        } catch (e) {
+          sendEvent('error', `Failed to read WP Mail SMTP settings: ${e}`)
         }
 
         sendEvent('log', `Getting themes for ${siteTitle}...`)

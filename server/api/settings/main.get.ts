@@ -1,10 +1,5 @@
-import { getSmtpSettings, isValidSmtpSettings } from '#server/utils/smtp'
+import { getSetupSettings } from '#server/utils/setup'
 
 export default defineEventHandler(async () => {
-  const smtp = await getSmtpSettings()
-
-  return {
-    smtp,
-    smtpConfigured: isValidSmtpSettings(smtp)
-  }
+  return await getSetupSettings()
 })

@@ -48,10 +48,10 @@
             color="warning"
             variant="soft"
             title="SMTP is not configured"
-            description="Add valid SMTP settings in Main settings before enabling e-mail notifications."
+            description="Add valid SMTP settings in Notifications before enabling e-mail notifications."
         >
           <template #actions>
-            <UButton to="/settings/main" size="xs" color="warning" variant="outline" label="Open Main settings"/>
+            <UButton to="/settings/notifications" size="xs" color="warning" variant="outline" label="Open Notifications settings"/>
           </template>
         </UAlert>
         <div v-if="emailTargets.length === 0" class="text-sm text-neutral-500">

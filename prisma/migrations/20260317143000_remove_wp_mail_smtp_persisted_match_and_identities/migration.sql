@@ -1,0 +1,105 @@
+PRAGMA defer_foreign_keys=ON;
+PRAGMA foreign_keys=OFF;
+
+CREATE TABLE "new_wordpress_installation_wp_mail_smtp" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "installationId" TEXT NOT NULL,
+  "pluginInstalled" BOOLEAN NOT NULL DEFAULT false,
+  "pluginIsActive" BOOLEAN NOT NULL DEFAULT false,
+  "pluginSlug" TEXT,
+  "pluginVersion" TEXT,
+  "provider" TEXT,
+  "fromEmail" TEXT,
+  "fromName" TEXT,
+  "smtpHost" TEXT,
+  "smtpEncryption" TEXT,
+  "smtpPort" INTEGER,
+  "smtpAuthentication" BOOLEAN,
+  "smtpUsername" TEXT,
+  "amazonSesAccessKeyId" TEXT,
+  "amazonSesRegion" TEXT,
+  "amazonSesCredentialsValid" BOOLEAN,
+  "amazonSesLastCheckedAt" DATETIME,
+  "amazonSesErrorMessage" TEXT,
+  "amazonSesDnsVerified" BOOLEAN,
+  "amazonSesIdentity" TEXT,
+  "amazonSesIdentityStatus" TEXT,
+  "logEmails" BOOLEAN,
+  "logRetentionPeriod" TEXT,
+  "logEmailContent" BOOLEAN,
+  "hideAnnouncements" BOOLEAN,
+  "disableEmailSummaries" BOOLEAN,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "wordpress_installation_wp_mail_smtp_installationId_fkey" FOREIGN KEY ("installationId") REFERENCES "wordpress_installations" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+INSERT INTO "new_wordpress_installation_wp_mail_smtp" (
+  "id",
+  "installationId",
+  "pluginInstalled",
+  "pluginIsActive",
+  "pluginSlug",
+  "pluginVersion",
+  "provider",
+  "fromEmail",
+  "fromName",
+  "smtpHost",
+  "smtpEncryption",
+  "smtpPort",
+  "smtpAuthentication",
+  "smtpUsername",
+  "amazonSesAccessKeyId",
+  "amazonSesRegion",
+  "amazonSesCredentialsValid",
+  "amazonSesLastCheckedAt",
+  "amazonSesErrorMessage",
+  "amazonSesDnsVerified",
+  "amazonSesIdentity",
+  "amazonSesIdentityStatus",
+  "logEmails",
+  "logRetentionPeriod",
+  "logEmailContent",
+  "hideAnnouncements",
+  "disableEmailSummaries",
+  "createdAt",
+  "updatedAt"
+)
+SELECT
+  "id",
+  "installationId",
+  "pluginInstalled",
+  "pluginIsActive",
+  "pluginSlug",
+  "pluginVersion",
+  "provider",
+  "fromEmail",
+  "fromName",
+  "smtpHost",
+  "smtpEncryption",
+  "smtpPort",
+  "smtpAuthentication",
+  "smtpUsername",
+  "amazonSesAccessKeyId",
+  "amazonSesRegion",
+  "amazonSesCredentialsValid",
+  "amazonSesLastCheckedAt",
+  "amazonSesErrorMessage",
+  "amazonSesDnsVerified",
+  "amazonSesIdentity",
+  "amazonSesIdentityStatus",
+  "logEmails",
+  "logRetentionPeriod",
+  "logEmailContent",
+  "hideAnnouncements",
+  "disableEmailSummaries",
+  "createdAt",
+  "updatedAt"
+FROM "wordpress_installation_wp_mail_smtp";
+
+DROP TABLE "wordpress_installation_wp_mail_smtp";
+ALTER TABLE "new_wordpress_installation_wp_mail_smtp" RENAME TO "wordpress_installation_wp_mail_smtp";
+CREATE UNIQUE INDEX "wordpress_installation_wp_mail_smtp_installationId_key" ON "wordpress_installation_wp_mail_smtp"("installationId");
+
+PRAGMA foreign_keys=ON;
+PRAGMA defer_foreign_keys=OFF;

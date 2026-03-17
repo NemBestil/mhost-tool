@@ -5,6 +5,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const toast = useToast()
 const config = useRuntimeConfig()
+const { data: setupSettings } = useSetupSettingsQuery()
 
 const isLoggingOut = ref(false)
 
@@ -31,8 +32,8 @@ async function logout() {
   }
 }
 
-const links = computed<NavigationMenuItem[][]>(() => [
-  [
+const links = computed<NavigationMenuItem[][]>(() => {
+  const primaryLinks: NavigationMenuItem[] = [
     {
       to: '/',
       icon: 'i-lucide-layout-dashboard',
@@ -51,6 +52,18 @@ const links = computed<NavigationMenuItem[][]>(() => [
       label: 'Sites',
       active: route.path.startsWith('/sites')
     },
+  ]
+
+  if (setupSettings.value?.features.wpMailSmtpPro) {
+    primaryLinks.push({
+      to: '/wp-mail-smtp',
+      icon: 'i-lucide-mail-check',
+      label: 'WP Mail SMTP',
+      active: route.path.startsWith('/wp-mail-smtp')
+    })
+  }
+
+  primaryLinks.push(
     {
       to: '/packages',
       icon: 'i-lucide-box',
@@ -69,10 +82,13 @@ const links = computed<NavigationMenuItem[][]>(() => [
       label: 'Monitoring',
       active: route.path.startsWith('/monitoring')
     }
-  ],
-  [[
+  )
+
+  return [
+    primaryLinks,
+    [[
     {
-      to: '/settings/main',
+      to: '/settings',
       icon: 'i-lucide-settings',
       label: 'Setup',
       active: route.path.startsWith('/settings')
@@ -85,8 +101,9 @@ const links = computed<NavigationMenuItem[][]>(() => [
         logout()
       }
     }]
+    ]
   ]
-])
+})
 </script>
 
 <template>

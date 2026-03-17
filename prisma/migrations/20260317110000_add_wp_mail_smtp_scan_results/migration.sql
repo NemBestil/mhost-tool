@@ -1,0 +1,31 @@
+CREATE TABLE "wordpress_installation_wp_mail_smtp" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "installationId" TEXT NOT NULL,
+    "pluginInstalled" BOOLEAN NOT NULL DEFAULT false,
+    "pluginIsActive" BOOLEAN NOT NULL DEFAULT false,
+    "pluginSlug" TEXT,
+    "pluginVersion" TEXT,
+    "provider" TEXT,
+    "fromEmail" TEXT,
+    "fromName" TEXT,
+    "smtpHost" TEXT,
+    "smtpEncryption" TEXT,
+    "smtpPort" INTEGER,
+    "smtpAuthentication" BOOLEAN,
+    "smtpUsername" TEXT,
+    "amazonSesAccessKeyId" TEXT,
+    "amazonSesRegion" TEXT,
+    "amazonSesDnsVerified" BOOLEAN,
+    "amazonSesIdentity" TEXT,
+    "amazonSesIdentityStatus" TEXT,
+    "logEmails" BOOLEAN,
+    "logRetentionPeriod" TEXT,
+    "logEmailContent" BOOLEAN,
+    "hideAnnouncements" BOOLEAN,
+    "disableEmailSummaries" BOOLEAN,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "wordpress_installation_wp_mail_smtp_installationId_fkey" FOREIGN KEY ("installationId") REFERENCES "wordpress_installations" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX "wordpress_installation_wp_mail_smtp_installationId_key" ON "wordpress_installation_wp_mail_smtp"("installationId");
