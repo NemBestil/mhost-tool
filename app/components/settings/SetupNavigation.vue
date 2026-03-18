@@ -2,10 +2,9 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const route = useRoute()
-const { data } = useSetupSettingsQuery()
 
 const items = computed<NavigationMenuItem[]>(() => {
-  const navItems: NavigationMenuItem[] = [
+  return [
     {
       label: 'Overview',
       icon: 'i-lucide-layout-grid',
@@ -19,17 +18,6 @@ const items = computed<NavigationMenuItem[]>(() => {
       active: route.path.startsWith('/settings/notifications')
     }
   ]
-
-  if (data.value?.features.wpMailSmtpPro) {
-    navItems.push({
-      label: 'WP Mail SMTP Pro',
-      icon: 'i-lucide-mail-check',
-      to: '/settings/wp-mail-smtp-pro',
-      active: route.path.startsWith('/settings/wp-mail-smtp-pro')
-    })
-  }
-
-  return navItems
 })
 </script>
 

@@ -134,15 +134,6 @@
         <UModal v-model:open="detailsModalOpen" :title="detailsModalTitle" :ui="{ content: 'sm:max-w-4xl' }">
           <template #body>
             <div v-if="selectedSite" class="space-y-6">
-              <div class="flex flex-col gap-1">
-                <a :href="selectedSite.siteUrl" target="_blank" class="text-sm text-primary hover:underline break-all">
-                  {{ selectedSite.siteUrl }}
-                </a>
-                <p class="text-sm text-neutral-500">
-                  Server: {{ selectedSite.server.name }}
-                </p>
-              </div>
-
               <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <UCard
                   v-for="section in detailsSections"
@@ -160,7 +151,13 @@
                     >
                       <dt class="text-sm text-neutral-500">{{ item.label }}</dt>
                       <dd class="text-sm text-neutral-900 dark:text-neutral-100 break-all text-left sm:text-right">
-                        {{ item.value }}
+                        <UBadge
+                          v-if="item.kind === 'badge'"
+                          v-bind="getDetailBadgeProps(item)"
+                        />
+                        <template v-else>
+                          {{ item.value }}
+                        </template>
                       </dd>
                     </div>
                   </dl>
@@ -192,6 +189,23 @@ const { data: setupSettings, status: setupStatus } = useSetupSettingsQuery()
 
 type WpMailSmtpListResponse = TypedInternalResponse<'/api/wp-mail-smtp/list', unknown, 'get'>
 type ServerList = TypedInternalResponse<'/api/servers/list', unknown, 'get'>
+type DetailBadgeItem = {
+  label: string
+  value: string
+  kind: 'badge'
+  color: 'success' | 'error'
+  icon: string
+}
+type DetailTextItem = {
+  label: string
+  value: string
+  kind?: 'text'
+}
+type DetailItem = DetailBadgeItem | DetailTextItem
+type DetailSection = {
+  title: string
+  items: DetailItem[]
+}
 
 const { data: sites, status, refetch } = useQuery<WpMailSmtpListResponse>({
   queryKey: ['wp-mail-smtp-list'],
@@ -323,13 +337,66 @@ const detailsSections = computed(() => {
     return []
   }
 
+  const provider = site.wpMailSmtp?.provider
+  const mailSettings: DetailItem[] = [
+    { label: 'From email', value: site.wpMailSmtp?.fromEmail || 'Not set' },
+    { label: 'From name', value: site.wpMailSmtp?.fromName || 'Not set' }
+  ]
+
+  if (provider === 'smtp') {
+    mailSettings.push(
+      { label: 'SMTP host', value: site.wpMailSmtp?.smtpHost || 'Not set' },
+      { label: 'SMTP encryption', value: site.wpMailSmtp?.smtpEncryption || 'Not set' },
+      { label: 'SMTP port', value: formatNullableNumber(site.wpMailSmtp?.smtpPort) },
+      { label: 'SMTP auth', value: formatBoolean(site.wpMailSmtp?.smtpAuthentication) },
+      { label: 'SMTP username', value: site.wpMailSmtp?.smtpUsername || 'Not set' }
+    )
+  }
+
+  if (provider === 'amazonses') {
+    mailSettings.push(
+      { label: 'AWS access key ID', value: site.wpMailSmtp?.amazonSesAccessKeyId || 'Not set' },
+      { label: 'AWS region', value: site.wpMailSmtp?.amazonSesRegion || 'Not set' }
+    )
+  }
+
+  const verificationItems: DetailItem[] = []
+
+  if (provider === 'amazonses') {
+    verificationItems.push(
+      getPositiveBadgeItem('SES credentials valid', site.wpMailSmtp?.amazonSesCredentialsValid === true, site.wpMailSmtp?.amazonSesCredentialsValid === true ? 'Valid' : 'Invalid'),
+      getPositiveBadgeItem('SES DNS verified', site.wpMailSmtp?.amazonSesDnsVerified === true, site.wpMailSmtp?.amazonSesDnsVerified === true ? 'Verified' : 'Not verified'),
+      { label: 'SES identity', value: site.wpMailSmtp?.amazonSesIdentity || 'Not set' },
+      getPositiveBadgeItem(
+        'SES identity status',
+        isPositiveSesIdentityStatus(site.wpMailSmtp?.amazonSesIdentityStatus),
+        site.wpMailSmtp?.amazonSesIdentityStatus || 'Unknown'
+      ),
+      getPositiveBadgeItem(
+        'SES error',
+        !site.wpMailSmtp?.amazonSesErrorMessage,
+        site.wpMailSmtp?.amazonSesErrorMessage || 'None'
+      ),
+      { label: 'SES last checked', value: formatDateTime(site.wpMailSmtp?.amazonSesLastCheckedAt) }
+    )
+  }
+
+  verificationItems.push(
+    { label: 'Log emails', value: formatBoolean(site.wpMailSmtp?.logEmails) },
+    { label: 'Log retention', value: formatLogRetention(site.wpMailSmtp?.logRetentionPeriod) },
+    { label: 'Log email content', value: formatBoolean(site.wpMailSmtp?.logEmailContent) },
+    { label: 'Hide announcements', value: formatBoolean(site.wpMailSmtp?.hideAnnouncements) },
+    { label: 'Disable email summaries', value: formatBoolean(site.wpMailSmtp?.disableEmailSummaries) },
+    { label: 'Record updated', value: formatDateTime(site.wpMailSmtp?.updatedAt) }
+  )
+
   return [
     {
       title: 'Installation',
       items: [
         { label: 'Site title', value: decodeEntities(site.siteTitle) },
+        { label: 'URL', value: site.siteUrl },
         { label: 'Server', value: site.server.name },
-        { label: 'Matched configuration', value: site.configuration?.name || 'None' },
         { label: 'Provider', value: getProviderDetail(site) }
       ]
     },
@@ -344,36 +411,13 @@ const detailsSections = computed(() => {
     },
     {
       title: 'Mail settings',
-      items: [
-        { label: 'From email', value: site.wpMailSmtp?.fromEmail || 'Not set' },
-        { label: 'From name', value: site.wpMailSmtp?.fromName || 'Not set' },
-        { label: 'SMTP host', value: site.wpMailSmtp?.smtpHost || 'Not set' },
-        { label: 'SMTP encryption', value: site.wpMailSmtp?.smtpEncryption || 'Not set' },
-        { label: 'SMTP port', value: formatNullableNumber(site.wpMailSmtp?.smtpPort) },
-        { label: 'SMTP auth', value: formatBoolean(site.wpMailSmtp?.smtpAuthentication) },
-        { label: 'SMTP username', value: site.wpMailSmtp?.smtpUsername || 'Not set' },
-        { label: 'AWS access key ID', value: site.wpMailSmtp?.amazonSesAccessKeyId || 'Not set' },
-        { label: 'AWS region', value: site.wpMailSmtp?.amazonSesRegion || 'Not set' }
-      ]
+      items: mailSettings
     },
     {
       title: 'Verification and behavior',
-      items: [
-        { label: 'SES credentials valid', value: formatStatus(site.wpMailSmtp?.amazonSesCredentialsValid, 'Unknown') },
-        { label: 'SES DNS verified', value: formatStatus(site.wpMailSmtp?.amazonSesDnsVerified, 'Unknown') },
-        { label: 'SES identity', value: site.wpMailSmtp?.amazonSesIdentity || 'Not set' },
-        { label: 'SES identity status', value: site.wpMailSmtp?.amazonSesIdentityStatus || 'Unknown' },
-        { label: 'SES error', value: site.wpMailSmtp?.amazonSesErrorMessage || 'None' },
-        { label: 'SES last checked', value: formatDateTime(site.wpMailSmtp?.amazonSesLastCheckedAt) },
-        { label: 'Log emails', value: formatBoolean(site.wpMailSmtp?.logEmails) },
-        { label: 'Log retention', value: formatLogRetention(site.wpMailSmtp?.logRetentionPeriod) },
-        { label: 'Log email content', value: formatBoolean(site.wpMailSmtp?.logEmailContent) },
-        { label: 'Hide announcements', value: formatBoolean(site.wpMailSmtp?.hideAnnouncements) },
-        { label: 'Disable email summaries', value: formatBoolean(site.wpMailSmtp?.disableEmailSummaries) },
-        { label: 'Record updated', value: formatDateTime(site.wpMailSmtp?.updatedAt) }
-      ]
+      items: verificationItems
     }
-  ]
+  ] satisfies DetailSection[]
 })
 
 const getConfigurationSummary = (site: WpMailSmtpListItem) => {
@@ -500,16 +544,28 @@ const formatBoolean = (value: boolean | null | undefined) => {
   return 'Unknown'
 }
 
-const formatStatus = (value: boolean | null | undefined, fallback: string) => {
-  if (value === true) {
-    return 'Yes'
+const getPositiveBadgeItem = (label: string, isPositive: boolean, value: string): DetailBadgeItem => {
+  return {
+    label,
+    value,
+    kind: 'badge',
+    color: isPositive ? 'success' : 'error',
+    icon: isPositive ? 'i-lucide-check' : 'i-lucide-x'
   }
+}
 
-  if (value === false) {
-    return 'No'
-  }
+const getDetailBadgeProps = (item: DetailBadgeItem) => {
+  return {
+    color: item.color,
+    variant: 'outline',
+    icon: item.icon,
+    label: item.value
+  } as any
+}
 
-  return fallback
+const isPositiveSesIdentityStatus = (value: string | null | undefined) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'verified' || normalized === 'success'
 }
 
 const formatNullableNumber = (value: number | null | undefined) => {

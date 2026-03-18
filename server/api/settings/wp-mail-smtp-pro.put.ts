@@ -102,7 +102,7 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 400,
       statusMessage: 'Feature disabled',
-      message: 'Enable WP Mail SMTP Pro config on the Setup overview page first.'
+      message: 'Enable WP Mail SMTP Pro on the Setup overview page first.'
     })
   }
 

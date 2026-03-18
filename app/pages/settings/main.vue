@@ -53,16 +53,16 @@
               <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
                 <div class="flex items-start justify-between gap-4">
                   <div class="space-y-1">
-                    <p class="font-medium">WP Mail SMTP Pro config</p>
+                    <p class="font-medium">WP Mail SMTP Pro</p>
                     <p class="text-sm text-neutral-500">
-                      Enable a dedicated setup page for creating default WP Mail SMTP Pro configurations.
+                      Enable WP Mail SMTP scanning and the main navigation section for scanned installations.
                     </p>
                   </div>
                   <USwitch v-model="form.features.wpMailSmtpPro" :disabled="isSaving" />
                 </div>
 
                 <p class="mt-3 text-xs text-neutral-500">
-                  When enabled, both a new Setup subpage and a main navigation entry appear.
+                  When enabled, the WP Mail SMTP section appears in the main navigation.
                 </p>
               </div>
 
@@ -124,12 +124,6 @@ const pages = computed(() => [
     description: 'Configure SMTP for MHost notification e-mails.',
     to: '/settings/notifications',
     available: true
-  },
-  {
-    title: 'WP Mail SMTP Pro',
-    description: 'Manage named WP Mail SMTP Pro configurations.',
-    to: '/settings/wp-mail-smtp-pro',
-    available: form.features.wpMailSmtpPro
   }
 ])
 
