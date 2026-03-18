@@ -387,6 +387,8 @@
 
         <template #tools>
           <div class="flex-1 flex flex-col min-h-0 mt-4 gap-4">
+            <SiteToolsWpRocketCacheTool :site-id="siteId" :plugins="site.plugins" />
+
             <div class="border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
