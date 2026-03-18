@@ -286,6 +286,46 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
         const blogNameCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get blogname --skip-plugins --skip-themes 2>/dev/null'`
         const adminEmailFromName = (await session.exec(blogNameCmd, { timeoutMs: 30000 })).stdout.trim() || null
 
+        // Hosting status check: create a temp file and try to fetch it from the public internet
+        sendEvent('log', `Checking hosting status for ${siteTitle}...`)
+        let hostingStatus: 'PUBLIC' | 'PRIVATE' | 'INACTIVE' | 'UNKNOWN' = 'UNKNOWN'
+        const probeToken = `mhost-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
+        const probeFileName = `${probeToken}.txt`
+        const wellKnownDir = `${wpDir}/.well-known`
+        const probeRemotePath = `${wellKnownDir}/${probeFileName}`
+        try {
+          // Create .well-known dir and probe file on the remote server
+          const createProbeCmd = `mkdir -p "${wellKnownDir}" && echo -n "${probeToken}" > "${probeRemotePath}" && chmod 644 "${probeRemotePath}"`
+          await session.exec(createProbeCmd, { timeoutMs: 10_000 })
+
+          // Try to fetch the file from the public internet (from this API server, not via SSH)
+          const probeUrl = `${siteUrl}/.well-known/${probeFileName}`
+          try {
+            const response = await fetch(probeUrl, {
+              signal: AbortSignal.timeout(15_000),
+              redirect: 'follow'
+            })
+            if (response.ok) {
+              const body = await response.text()
+              hostingStatus = body.trim() === probeToken ? 'PUBLIC' : 'INACTIVE'
+            } else if (response.status === 401 || response.status === 403) {
+              hostingStatus = 'PRIVATE'
+            } else {
+              hostingStatus = 'INACTIVE'
+            }
+          } catch {
+            // Network error, DNS failure, timeout etc.
+            hostingStatus = 'INACTIVE'
+          }
+
+          // Clean up the probe file
+          await session.exec(`rm -f "${probeRemotePath}"`, { timeoutMs: 10_000 }).catch(() => {})
+        } catch {
+          // Could not create probe file, leave as UNKNOWN
+          await session.exec(`rm -f "${probeRemotePath}"`, { timeoutMs: 10_000 }).catch(() => {})
+        }
+        sendEvent('log', `Hosting status for ${siteTitle}: ${hostingStatus}`)
+
         const installation = await prisma.wordPressInstallation.upsert({
           where: {
             serverId_installationPath: {
@@ -304,6 +344,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
             adminEmailFromName,
             phpVersion,
             phpMemoryLimit,
+            hostingStatus,
             lastScanAt: new Date()
           },
           create: {
@@ -319,6 +360,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
             adminEmailFromName,
             phpVersion,
             phpMemoryLimit,
+            hostingStatus,
             lastScanAt: new Date(),
             monitoringLevel: defaultNewSiteLevel
           }

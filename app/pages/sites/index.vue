@@ -39,6 +39,18 @@
           <Icon name="lucide:server" class="size-4" />
         </template>
       </USelectMenu>
+      <USelectMenu
+          v-model="selectedHostingStatus"
+          :items="hostingStatusOptions"
+          value-attribute="value"
+          placeholder="Filter by status"
+          class="w-48"
+          clear
+      >
+        <template #leading>
+          <Icon name="lucide:signal" class="size-4" />
+        </template>
+      </USelectMenu>
     </div>
 
     <UTable
@@ -68,16 +80,17 @@
         <span>{{ row.original.server.name }}</span>
       </template>
 
-      <!-- CVE Column -->
-      <template #currentCve-cell="{ row }">
-        <UBadge
-            v-if="row.original.currentCve !== null"
-            :color="getCveColor(row.original.currentCve)"
-            variant="subtle"
-        >
-          {{ row.original.currentCve.toFixed(1) }}
-        </UBadge>
-        <span v-else class="text-sm text-neutral-400">Unknown</span>
+      <!-- Status Column -->
+      <template #status-cell="{ row }">
+        <UTooltip :text="getHostingStatusLabel(row.original.hostingStatus)">
+          <UBadge
+              :color="getHostingStatusColor(row.original.hostingStatus)"
+              variant="subtle"
+              class="text-base px-1"
+          >
+            <Icon :name="getHostingStatusIcon(row.original.hostingStatus)" class="size-4" />
+          </UBadge>
+        </UTooltip>
       </template>
 
       <!-- Last Scan Column -->
@@ -201,6 +214,13 @@ const searchThrottled = refDebounced(search, 500)
 const sorting = ref([{id: 'siteTitle', desc: false}])
 
 const selectedServer = ref<{ label: string, value: string } | null>(null)
+const selectedHostingStatus = ref<{ label: string, value: string } | null>(null)
+const hostingStatusOptions = [
+  { label: 'Public', value: 'PUBLIC' },
+  { label: 'Private', value: 'PRIVATE' },
+  { label: 'Inactive', value: 'INACTIVE' },
+  { label: 'Unknown', value: 'UNKNOWN' }
+]
 const serverOptions = computed(() => {
   const options = []
   if (servers.value) {
@@ -214,6 +234,10 @@ const filteredSites = computed(() => {
 
   if (selectedServer.value) {
     result = result.filter(s => s.serverId === selectedServer.value!.value)
+  }
+
+  if (selectedHostingStatus.value) {
+    result = result.filter(s => s.hostingStatus === selectedHostingStatus.value!.value)
   }
 
   if (searchThrottled.value) {
@@ -337,7 +361,11 @@ const columns: TableColumn<Site>[] = [
   createSortableColumn('server', 'Server', (rowA: any, rowB: any) => {
     return rowA.original.server.name.localeCompare(rowB.original.server.name)
   }),
-  createSortableColumn('currentCve', 'CVE'),
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    accessorFn: (row: Site) => row.hostingStatus,
+  },
   createSortableColumn('lastScanAt', 'Last Scan'),
   {
     id: 'actions',
@@ -388,10 +416,31 @@ const decodeEntities = (text: string) => {
   return textarea.value
 }
 
-const getCveColor = (cve: number) => {
-  if (cve >= 7) return 'error'
-  if (cve >= 4) return 'warning'
-  return 'success'
+const getHostingStatusColor = (status: string) => {
+  switch (status) {
+    case 'PUBLIC': return 'success'
+    case 'PRIVATE': return 'warning'
+    case 'INACTIVE': return 'error'
+    default: return 'neutral'
+  }
+}
+
+const getHostingStatusIcon = (status: string) => {
+  switch (status) {
+    case 'PUBLIC': return 'lucide:globe'
+    case 'PRIVATE': return 'lucide:lock'
+    case 'INACTIVE': return 'lucide:wifi-off'
+    default: return 'lucide:help-circle'
+  }
+}
+
+const getHostingStatusLabel = (status: string) => {
+  switch (status) {
+    case 'PUBLIC': return 'Public'
+    case 'PRIVATE': return 'Private'
+    case 'INACTIVE': return 'Inactive'
+    default: return 'Unknown'
+  }
 }
 
 

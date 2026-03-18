@@ -30,6 +30,13 @@ enum MonitoringStatus {
   UNKNOWN
 }
 
+enum HostingStatus {
+  PUBLIC
+  PRIVATE
+  INACTIVE
+  UNKNOWN
+}
+
 enum MonitoringNotificationType {
   EMAIL
   PUSHOVER
@@ -68,6 +75,7 @@ model WordPressInstallation {
   siteDescription              String?
   siteUrl                      String
   currentCve                   Float? // 0-10, null = unknown
+  hostingStatus                HostingStatus @default(UNKNOWN)
   timezone                     String?
   usesServerCron               Boolean           @default(false)
   adminEmail                   String?
