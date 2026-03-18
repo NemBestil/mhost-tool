@@ -11,7 +11,7 @@
 
           <div class="space-y-4">
             <p class="text-sm text-neutral-500">
-              Configure SMTP for e-mail notifications. This is required before monitoring e-mails can be enabled.
+              Configure SMTP for e-mail notifications and enable scan reports.
             </p>
 
             <div class="grid grid-cols-1 gap-3">
@@ -98,6 +98,42 @@
               </div>
             </div>
 
+            <div class="border-t border-neutral-200 dark:border-neutral-800 pt-4 space-y-4">
+              <div>
+                <h4 class="font-medium">Reports</h4>
+                <p class="text-sm text-neutral-500 mt-1">
+                  These reports use the SMTP settings above. Add shared recipients once, then enable the reports you want to send after scans.
+                </p>
+              </div>
+
+              <UFormField
+                label="Report recipients"
+                description="One e-mail address per line."
+                :error="getFieldError('reportRecipients')"
+              >
+                <UTextarea
+                  v-model="reportRecipientsInput"
+                  :rows="2"
+                  autoresize
+                  :placeholder="'alerts@example.com\nops@example.com'"
+                  :disabled="isSaving || isTesting"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1 text-sm">
+                    <p class="font-medium text-default">New site(s) found</p>
+                    <p class="text-sm text-neutral-500">
+                      Send a report after scans when a server discovers sites that were not present on previous completed scans.
+                    </p>
+                  </div>
+                  <USwitch v-model="reportNewSitesFound" :disabled="isSaving || isTesting" />
+                </div>
+              </div>
+            </div>
+
             <div class="flex flex-wrap gap-2 justify-end">
               <UPopover>
                 <UButton
@@ -166,9 +202,13 @@ type SmtpForm = {
 type NotificationSettingsResponse = {
   smtp: SmtpForm | null
   smtpConfigured: boolean
+  reports: {
+    recipients: string[]
+    newSitesFound: boolean
+  }
 }
 
-type SmtpFieldErrorPath = keyof SmtpForm | 'toEmail'
+type SmtpFieldErrorPath = keyof SmtpForm | 'toEmail' | 'reportRecipients'
 
 const toast = useToast()
 
@@ -189,6 +229,8 @@ const form = reactive<SmtpForm>({
 })
 
 const testRecipient = ref('')
+const reportRecipientsInput = ref('')
+const reportNewSitesFound = ref(false)
 const isSaving = ref(false)
 const isTesting = ref(false)
 const fieldErrors = ref<Partial<Record<SmtpFieldErrorPath, string>>>({})
@@ -199,11 +241,16 @@ const smtpAuthMethodOptions = [
 ]
 
 watch(data, (value) => {
-  if (!value?.smtp) {
+  if (!value) {
     return
   }
 
-  Object.assign(form, value.smtp)
+  if (value.smtp) {
+    Object.assign(form, value.smtp)
+  }
+
+  reportRecipientsInput.value = value.reports.recipients.join('\n')
+  reportNewSitesFound.value = value.reports.newSitesFound
 }, { immediate: true })
 
 watch(() => form.port, (port) => {
@@ -242,8 +289,16 @@ const setFieldErrors = (errors: Record<string, string>) => {
     authPass: errors.authPass,
     fromName: errors.fromName,
     fromEmail: errors.fromEmail,
-    toEmail: errors.toEmail
+    toEmail: errors.toEmail,
+    reportRecipients: errors.reportRecipients
   }
+}
+
+const parseReportRecipients = (value: string) => {
+  return value
+    .split(/[\n,;]+/)
+    .map(item => item.trim())
+    .filter(Boolean)
 }
 
 const saveSettings = async () => {
@@ -261,6 +316,10 @@ const saveSettings = async () => {
           authUser: form.authUser.trim(),
           fromName: form.fromName.trim(),
           fromEmail: form.fromEmail.trim()
+        },
+        reports: {
+          recipients: parseReportRecipients(reportRecipientsInput.value),
+          newSitesFound: reportNewSitesFound.value
         }
       }
     })
@@ -269,7 +328,7 @@ const saveSettings = async () => {
 
     toast.add({
       title: 'Saved',
-      description: 'SMTP settings have been updated.',
+      description: 'Notification settings have been updated.',
       color: 'success'
     })
   } catch (error: any) {
@@ -279,7 +338,7 @@ const saveSettings = async () => {
 
     toast.add({
       title: 'Error',
-      description: error.data?.message || 'Failed to save SMTP settings.',
+      description: error.data?.message || 'Failed to save notification settings.',
       color: 'error'
     })
   } finally {

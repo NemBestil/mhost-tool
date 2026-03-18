@@ -48,14 +48,39 @@
 
           <div class="space-y-1">
             <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Admin Email</span>
-            <div class="font-medium">{{ site.adminEmail || 'N/A' }}</div>
+            <div class="space-y-1">
+              <div class="flex items-center gap-1.5">
+                <span class="font-medium">{{ site.adminEmail || 'N/A' }}</span>
+                <UButton
+                  icon="i-lucide-pencil"
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  @click="openAdminEmailModal"
+                />
+              </div>
+              <div v-if="site.adminEmailFromName" class="text-sm text-neutral-500">
+                From: {{ site.adminEmailFromName }}
+              </div>
+            </div>
           </div>
 
-          <div class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">PHP Version</span>
-            <div class="flex items-center gap-2 font-medium">
-              <UBadge variant="subtle" color="neutral">{{ site.phpVersion || 'Unknown' }}</UBadge>
-              <span class="text-neutral-400 text-sm">Limit: {{ site.phpMemoryLimit || 'N/A' }}</span>
+          <div v-if="site.hasWooCommerce" class="space-y-1">
+            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">WooCommerce Email</span>
+            <div class="space-y-1">
+              <div class="flex items-center gap-1.5">
+                <span class="font-medium">{{ site.wooCommerceEmail || 'N/A' }}</span>
+                <UButton
+                  icon="i-lucide-pencil"
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  @click="openWooCommerceEmailModal"
+                />
+              </div>
+              <div v-if="site.wooCommerceEmailFromName" class="text-sm text-neutral-500">
+                From: {{ site.wooCommerceEmailFromName }}
+              </div>
             </div>
           </div>
 
@@ -360,14 +385,23 @@
           </div>
         </template>
 
-        <template #tweaks>
-          <div class="mt-4 flex-1 overflow-auto">
-            <div class="text-center py-12 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl">
-              <UIcon name="i-lucide-settings-2" class="size-12 text-neutral-300 mx-auto mb-4" />
-              <h3 class="text-lg font-medium text-neutral-900 dark:text-neutral-50">No Tweaks Yet</h3>
-              <p class="text-neutral-500 max-w-sm mx-auto mt-2">
-                Website tweaks and security hardening options will be available here in a future update.
-              </p>
+        <template #tools>
+          <div class="flex-1 flex flex-col min-h-0 mt-4 gap-4">
+            <div class="border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <h3 class="font-semibold text-neutral-900 dark:text-neutral-50">Log in to WordPress</h3>
+                  <p class="text-sm text-neutral-500 mt-1">
+                    Generate a secure one-time login link for the auto-login user.
+                  </p>
+                </div>
+                <UButton
+                  icon="i-lucide-log-in"
+                  :to="`/sites/${siteId}/wp-login`"
+                  target="_blank"
+                  label="Log in"
+                />
+              </div>
             </div>
           </div>
         </template>
@@ -419,6 +453,50 @@
         <div class="flex justify-end gap-2">
           <UButton color="neutral" variant="outline" label="Cancel" :disabled="isUserActionLoading" @click="closeResetPasswordModal" />
           <UButton label="Start reset" :loading="isUserActionLoading" @click="confirmStartPasswordReset" />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal v-model:open="adminEmailModalOpen" title="Edit admin email">
+      <template #body>
+        <div class="space-y-3">
+          <p class="text-sm text-neutral-500">
+            Update the WordPress® admin email address and sender name for this site.
+          </p>
+          <UFormField label="Admin email" required>
+            <UInput v-model="adminEmailValue" type="email" placeholder="admin@example.com" autocomplete="email" />
+          </UFormField>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton color="neutral" variant="outline" label="Cancel" :disabled="isSiteEmailLoading" @click="adminEmailModalOpen = false" />
+          <UButton label="Save" :loading="isSiteEmailLoading" @click="confirmUpdateAdminEmail" />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal v-model:open="wooCommerceEmailModalOpen" title="Edit WooCommerce email">
+      <template #body>
+        <div class="space-y-3">
+          <UAlert
+            color="info"
+            variant="soft"
+            title="Applies to all WooCommerce mails"
+            description="This will set the from-address for all outgoing WooCommerce emails and update the recipient for all admin notification emails."
+          />
+          <UFormField label="WooCommerce email" required>
+            <UInput v-model="wooCommerceEmailValue" type="email" placeholder="store@example.com" autocomplete="email" />
+          </UFormField>
+          <UFormField label="From name (sender name)">
+            <UInput v-model="wooCommerceEmailFromNameValue" placeholder="Your store name" />
+          </UFormField>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton color="neutral" variant="outline" label="Cancel" :disabled="isSiteEmailLoading" @click="wooCommerceEmailModalOpen = false" />
+          <UButton label="Save" :loading="isSiteEmailLoading" @click="confirmUpdateWooCommerceEmail" />
         </div>
       </template>
     </UModal>
@@ -485,7 +563,7 @@ const toast = useToast()
 const queryClient = useQueryClient()
 const packageJobStore = usePackageJobStore()
 
-const tabValues = ['plugins', 'themes', 'users', 'tweaks'] as const
+const tabValues = ['plugins', 'themes', 'users', 'tools'] as const
 type SiteTab = typeof tabValues[number]
 
 const { data: site, status } = useQuery<SiteDetails>({
@@ -517,10 +595,10 @@ const tabItems = [
     slot: 'users'
   },
   {
-    label: 'Tweaks',
-    icon: 'i-lucide-settings-2',
-    value: 'tweaks',
-    slot: 'tweaks'
+    label: 'Tools',
+    icon: 'i-lucide-wrench',
+    value: 'tools',
+    slot: 'tools'
   }
 ]
 
@@ -890,6 +968,106 @@ const confirmChangeEmail = async () => {
     })
   } finally {
     isUserActionLoading.value = false
+  }
+}
+
+const adminEmailModalOpen = ref(false)
+const wooCommerceEmailModalOpen = ref(false)
+const adminEmailValue = ref('')
+const adminEmailFromNameValue = ref('')
+const wooCommerceEmailValue = ref('')
+const wooCommerceEmailFromNameValue = ref('')
+const isSiteEmailLoading = ref(false)
+
+const openAdminEmailModal = () => {
+  adminEmailValue.value = site.value?.adminEmail || ''
+  adminEmailFromNameValue.value = site.value?.adminEmailFromName || ''
+  adminEmailModalOpen.value = true
+}
+
+const openWooCommerceEmailModal = () => {
+  wooCommerceEmailValue.value = site.value?.wooCommerceEmail || ''
+  wooCommerceEmailFromNameValue.value = site.value?.wooCommerceEmailFromName || ''
+  wooCommerceEmailModalOpen.value = true
+}
+
+const confirmUpdateAdminEmail = async () => {
+  const email = adminEmailValue.value.trim()
+  if (!email) return
+
+  isSiteEmailLoading.value = true
+  try {
+    const response = await useApiClient()(`/sites/${siteId}/update-admin-email`, {
+      method: 'PUT',
+      body: {
+        email,
+        fromName: adminEmailFromNameValue.value
+      }
+    }) as { adminEmail: string; adminEmailFromName: string | null }
+
+    queryClient.setQueryData(['site', siteId], (current: SiteDetails | undefined) => {
+      if (!current) return current
+      return {
+        ...current,
+        adminEmail: response.adminEmail,
+        adminEmailFromName: response.adminEmailFromName
+      }
+    })
+
+    toast.add({
+      title: 'Admin email updated',
+      description: `Admin email set to ${response.adminEmail}.`,
+      color: 'success'
+    })
+    adminEmailModalOpen.value = false
+  } catch (error: any) {
+    toast.add({
+      title: 'Failed to update admin email',
+      description: error?.data?.message || error?.message || 'Unknown error',
+      color: 'error'
+    })
+  } finally {
+    isSiteEmailLoading.value = false
+  }
+}
+
+const confirmUpdateWooCommerceEmail = async () => {
+  const email = wooCommerceEmailValue.value.trim()
+  if (!email) return
+
+  isSiteEmailLoading.value = true
+  try {
+    const response = await useApiClient()(`/sites/${siteId}/update-woocommerce-email`, {
+      method: 'PUT',
+      body: {
+        email,
+        fromName: wooCommerceEmailFromNameValue.value
+      }
+    }) as { wooCommerceEmail: string; wooCommerceEmailFromName: string | null }
+
+    queryClient.setQueryData(['site', siteId], (current: SiteDetails | undefined) => {
+      if (!current) return current
+      return {
+        ...current,
+        wooCommerceEmail: response.wooCommerceEmail,
+        wooCommerceEmailFromName: response.wooCommerceEmailFromName
+      }
+    })
+
+    toast.add({
+      title: 'WooCommerce email updated',
+      description: `WooCommerce email set to ${response.wooCommerceEmail}.`,
+      color: 'success'
+    })
+    wooCommerceEmailModalOpen.value = false
+  } catch (error: any) {
+    toast.add({
+      title: 'Failed to update WooCommerce email',
+      description: error?.data?.message || error?.message || 'Unknown error',
+      color: 'error'
+    })
+  } finally {
+    isSiteEmailLoading.value = false
   }
 }
 

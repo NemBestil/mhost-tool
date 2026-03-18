@@ -72,7 +72,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     },
     {
       to: '/custom-files',
-      icon: 'i-lucide-file-up',
+      icon: 'i-lucide-files',
       label: 'Custom files',
       active: route.path.startsWith('/custom-files')
     },

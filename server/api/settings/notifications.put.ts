@@ -1,5 +1,10 @@
 import { setOption } from '#server/utils/db'
 import { normalizeSmtpSettings, isValidSmtpSettings, SMTP_AUTH_METHODS, SMTP_OPTION_KEY } from '#server/utils/smtp'
+import {
+  normalizeNotificationReportsSettings,
+  NOTIFICATION_REPORTS_OPTION_KEY,
+  parseNotificationReportRecipients
+} from '#server/utils/notificationReports'
 import { z } from 'zod'
 
 const bodySchema = z.object({
@@ -12,6 +17,10 @@ const bodySchema = z.object({
     authPass: z.string().min(1),
     fromName: z.string().trim().min(1),
     fromEmail: z.string().trim().email()
+  }),
+  reports: z.object({
+    recipients: z.array(z.string()).default([]),
+    newSitesFound: z.boolean().default(false)
   })
 })
 
@@ -39,6 +48,22 @@ export default defineEventHandler(async (event) => {
 
   const body = parsedBody.data
   const smtp = normalizeSmtpSettings(body.smtp)
+  let recipients: string[] = []
+
+  try {
+    recipients = parseNotificationReportRecipients(body.reports.recipients)
+  } catch (error: any) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Validation error',
+      message: 'Validation error',
+      data: {
+        fieldErrors: {
+          reportRecipients: error?.message || 'Invalid report recipient list.'
+        }
+      }
+    })
+  }
 
   if (!isValidSmtpSettings(smtp)) {
     throw createError({
@@ -48,10 +73,37 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await setOption(SMTP_OPTION_KEY, smtp)
+  if (body.reports.newSitesFound && recipients.length === 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Validation error',
+      message: 'Validation error',
+      data: {
+        fieldErrors: {
+          reportRecipients: 'Add at least one e-mail address to enable reports.'
+        }
+      }
+    })
+  }
+
+  const reports = normalizeNotificationReportsSettings({
+    recipients,
+    reports: {
+      newSitesFound: body.reports.newSitesFound
+    }
+  })
+
+  await Promise.all([
+    setOption(SMTP_OPTION_KEY, smtp),
+    setOption(NOTIFICATION_REPORTS_OPTION_KEY, reports)
+  ])
 
   return {
     smtp,
-    smtpConfigured: true
+    smtpConfigured: true,
+    reports: {
+      recipients: reports.recipients,
+      newSitesFound: reports.reports.newSitesFound
+    }
   }
 })

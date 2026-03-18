@@ -71,6 +71,10 @@ model WordPressInstallation {
   timezone                     String?
   usesServerCron               Boolean           @default(false)
   adminEmail                   String?
+  adminEmailFromName           String?
+  hasWooCommerce               Boolean           @default(false)
+  wooCommerceEmail             String?
+  wooCommerceEmailFromName     String?
   phpVersion                   String?
   phpMemoryLimit               String?
   lastScanAt                   DateTime?

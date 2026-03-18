@@ -1,7 +1,8 @@
-import { prisma } from '#server/utils/db'
+import { getOption, prisma, setOption } from '#server/utils/db'
 import { openSshConnection, type SshConnection, type SshSession } from '#server/utils/ssh'
 import { broadcastScanEvent, type BroadcastEvent } from '#server/utils/scanBroadcast'
 import { getOrCreateMonitoringConfig } from '#server/utils/monitoring'
+import { sendNewSitesFoundReport, type NewSiteReportEntry } from '#server/utils/notificationReports'
 import { validateAmazonSesCredentials } from '#server/utils/amazonSes'
 import {
   normalizeWpMailSmtpScanRecord,
@@ -24,6 +25,15 @@ type ScanEventType = 'log' | 'progress' | 'error' | 'complete'
 export type ServerScanResult = {
   success: number
   failed: number
+}
+
+type ServerScanState = {
+  hasCompletedScan: boolean
+  lastCompletedAt: string | null
+}
+
+function getServerScanStateOptionKey(serverId: string) {
+  return `server.scanState.${serverId}`
 }
 
 function buildWpCliCommand(
@@ -109,8 +119,21 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
   const ssh = await openSshConnection(sshConn)
 
   try {
-    const monitoringConfig = await getOrCreateMonitoringConfig()
+    const [monitoringConfig, existingInstallations, scanState] = await Promise.all([
+      getOrCreateMonitoringConfig(),
+      prisma.wordPressInstallation.findMany({
+        where: { serverId: server.id },
+        select: { installationPath: true }
+      }),
+      getOption<ServerScanState>(getServerScanStateOptionKey(server.id), {
+        hasCompletedScan: false,
+        lastCompletedAt: null
+      })
+    ])
     const defaultNewSiteLevel = monitoringConfig.defaultNewSiteLevel
+    const hadCompletedScan = Boolean(scanState?.hasCompletedScan)
+    const knownInstallationPaths = new Set(existingInstallations.map((installation) => installation.installationPath))
+    const newSitesFound: NewSiteReportEntry[] = []
 
     sendEvent('log', `Starting scan on ${server.name}...`)
 
@@ -215,6 +238,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
         }
 
         sendEvent('log', `Detected user: ${unixUser}`)
+        const isNewInstallation = !knownInstallationPaths.has(wpDir)
 
         const wpInfoCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get blogname --skip-plugins --skip-themes 2>/dev/null'`
         const siteTitle = (await session.exec(wpInfoCmd, { timeoutMs: 30000 })).stdout.trim() || 'Unknown'
@@ -259,6 +283,9 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
           await session.exec(`rm -f "${wpDir}/${phpInfoFilename}"`, { timeoutMs: 10000 }).catch(() => {})
         }
 
+        const blogNameCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get blogname --skip-plugins --skip-themes 2>/dev/null'`
+        const adminEmailFromName = (await session.exec(blogNameCmd, { timeoutMs: 30000 })).stdout.trim() || null
+
         const installation = await prisma.wordPressInstallation.upsert({
           where: {
             serverId_installationPath: {
@@ -274,6 +301,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
             timezone,
             usesServerCron,
             adminEmail,
+            adminEmailFromName,
             phpVersion,
             phpMemoryLimit,
             lastScanAt: new Date()
@@ -288,16 +316,27 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
             timezone,
             usesServerCron,
             adminEmail,
+            adminEmailFromName,
             phpVersion,
             phpMemoryLimit,
             lastScanAt: new Date(),
             monitoringLevel: defaultNewSiteLevel
           }
         })
+        knownInstallationPaths.add(wpDir)
+
+        if (hadCompletedScan && isNewInstallation) {
+          newSitesFound.push({
+            siteTitle,
+            siteUrl,
+            installationPath: wpDir
+          })
+        }
 
         sendEvent('log', `Getting plugins for ${siteTitle}...`)
         const pluginsCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar plugin list --format=json --fields=name,title,status,update,version,update_version,auto_update --skip-plugins --skip-themes 2>/dev/null'`
         let wpMailSmtpPlugin: WpMailSmtpPluginInfo | null = null
+        let hasWooCommerce = false
         try {
           const pluginsResult = await session.exec(pluginsCmd, { timeoutMs: 60000 })
           const plugins = JSON.parse(pluginsResult.stdout.trim() || '[]')
@@ -308,6 +347,8 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
               isEnabled: plugin.status === 'active'
             }))
           )
+
+          hasWooCommerce = plugins.some((plugin: any) => plugin.name === 'woocommerce' && plugin.status === 'active')
 
           await prisma.wordPressPlugin.deleteMany({
             where: { installationId: installation.id }
@@ -363,6 +404,50 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
         } catch (e) {
           sendEvent('error', `Failed to get plugins: ${e}`)
         }
+
+        let wooCommerceEmail: string | null = null
+        let wooCommerceEmailFromName: string | null = null
+        if (hasWooCommerce) {
+          sendEvent('log', `Detecting WooCommerce email for ${siteTitle}...`)
+          try {
+            const wooEmailCmd = buildWpCliCommand(
+              unixUser,
+              wpDir,
+              phpBinary,
+              ['option', 'get', 'woocommerce_email_from_address'],
+              { skipPlugins: true, skipThemes: true }
+            )
+            const wooEmailResult = await session.exec(wooEmailCmd, { timeoutMs: 30_000 })
+            const emailValue = wooEmailResult.stdout.trim()
+            if (emailValue && emailValue.includes('@')) {
+              wooCommerceEmail = emailValue
+            }
+
+            const wooFromNameCmd = buildWpCliCommand(
+              unixUser,
+              wpDir,
+              phpBinary,
+              ['option', 'get', 'woocommerce_email_from_name'],
+              { skipPlugins: true, skipThemes: true }
+            )
+            const wooFromNameResult = await session.exec(wooFromNameCmd, { timeoutMs: 30_000 })
+            const fromNameValue = wooFromNameResult.stdout.trim()
+            if (fromNameValue) {
+              wooCommerceEmailFromName = fromNameValue
+            }
+          } catch (e) {
+            sendEvent('error', `Failed to get WooCommerce email: ${e}`)
+          }
+        }
+
+        await prisma.wordPressInstallation.update({
+          where: { id: installation.id },
+          data: {
+            hasWooCommerce,
+            wooCommerceEmail,
+            wooCommerceEmailFromName
+          }
+        })
 
         sendEvent('log', `Reading WP Mail SMTP settings for ${siteTitle}...`)
         try {
@@ -458,6 +543,22 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
     })
 
     await Promise.all(workers)
+
+    try {
+      await setOption(getServerScanStateOptionKey(server.id), {
+        hasCompletedScan: true,
+        lastCompletedAt: new Date().toISOString()
+      } satisfies ServerScanState)
+
+      if (hadCompletedScan && newSitesFound.length > 0) {
+        await sendNewSitesFoundReport({
+          name: server.name,
+          hostname: server.hostname
+        }, newSitesFound)
+      }
+    } catch (error) {
+      console.error(`[serverScan] Post-scan reporting failed for ${server.id}:`, error)
+    }
 
     sendEvent('complete', `Scan completed: ${successCount} successful, ${failedCount} failed`, { success: successCount, failed: failedCount })
     return { success: successCount, failed: failedCount }

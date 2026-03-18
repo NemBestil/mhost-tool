@@ -121,7 +121,7 @@ const pages = computed(() => [
   },
   {
     title: 'Notifications',
-    description: 'Configure SMTP for MHost notification e-mails.',
+    description: 'Configure SMTP and scan-report e-mails for MHost.',
     to: '/settings/notifications',
     available: true
   }

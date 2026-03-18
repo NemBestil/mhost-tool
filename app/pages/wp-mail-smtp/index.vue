@@ -54,6 +54,18 @@
               <Icon name="lucide:server" class="size-4" />
             </template>
           </USelectMenu>
+          <USelectMenu
+            v-model="selectedInstallationState"
+            :items="installationStateOptions"
+            value-attribute="value"
+            placeholder="Filter by installation"
+            class="w-56"
+            clear
+          >
+            <template #leading>
+              <Icon name="lucide:filter" class="size-4" />
+            </template>
+          </USelectMenu>
         </div>
 
         <UTable
@@ -220,6 +232,7 @@ const featureEnabled = computed(() => setupSettings.value?.features.wpMailSmtpPr
 const search = ref('')
 const searchThrottled = refDebounced(search, 500)
 const selectedServer = ref<{ label: string, value: string }>()
+const selectedInstallationState = ref<{ label: string, value: InstallationStateFilter }>()
 const detailsModalOpen = ref(false)
 const selectedSite = ref<WpMailSmtpListItem | null>(null)
 const serverOptions = computed(() => {
@@ -229,6 +242,13 @@ const serverOptions = computed(() => {
   }
   return options
 })
+type InstallationStateFilter = 'not_installed' | 'installed_aws' | 'installed_other'
+
+const installationStateOptions = [
+  { label: 'Not installed', value: 'not_installed' as const },
+  { label: 'Installed: AWS', value: 'installed_aws' as const },
+  { label: 'Installed: Other provider', value: 'installed_other' as const }
+]
 
 const filteredSites = computed(() => {
   let result = sites.value || []
@@ -237,11 +257,16 @@ const filteredSites = computed(() => {
     result = result.filter((site) => site.serverId === selectedServer.value!.value)
   }
 
+  if (selectedInstallationState.value) {
+    result = result.filter((site) => matchesInstallationStateFilter(site, selectedInstallationState.value!.value))
+  }
+
   if (searchThrottled.value) {
     const query = searchThrottled.value.toLowerCase()
     result = result.filter((site) =>
       site.siteTitle.toLowerCase().includes(query) ||
       site.siteUrl.toLowerCase().includes(query) ||
+      getConfigurationSummary(site).toLowerCase().includes(query) ||
       (site.configuration?.name.toLowerCase().includes(query) ?? false)
     )
   }
@@ -440,6 +465,22 @@ const getConfigurationSummary = (site: WpMailSmtpListItem) => {
   }
 
   return site.wpMailSmtp.provider
+}
+
+const matchesInstallationStateFilter = (site: WpMailSmtpListItem, filter: InstallationStateFilter) => {
+  if (filter === 'not_installed') {
+    return !site.wpMailSmtp?.pluginInstalled
+  }
+
+  if (!site.wpMailSmtp?.pluginInstalled) {
+    return false
+  }
+
+  if (filter === 'installed_aws') {
+    return site.wpMailSmtp.provider === 'amazonses'
+  }
+
+  return site.wpMailSmtp.provider !== 'amazonses'
 }
 
 const getProviderDetail = (site: WpMailSmtpListItem) => {
