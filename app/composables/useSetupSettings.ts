@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/vue-query'
 export type SetupSettingsResponse = {
   features: {
     wpMailSmtpPro: boolean
+    wpRocketCache: boolean
   }
 }
 

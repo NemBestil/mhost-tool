@@ -54,15 +54,6 @@ const links = computed<NavigationMenuItem[][]>(() => {
     },
   ]
 
-  if (setupSettings.value?.features.wpMailSmtpPro) {
-    primaryLinks.push({
-      to: '/wp-mail-smtp',
-      icon: 'i-lucide-mail-check',
-      label: 'WP Mail SMTP',
-      active: route.path.startsWith('/wp-mail-smtp')
-    })
-  }
-
   primaryLinks.push(
     {
       to: '/packages',
@@ -84,8 +75,30 @@ const links = computed<NavigationMenuItem[][]>(() => {
     }
   )
 
+  const plugins = [];
+
+  if (setupSettings.value?.features.wpMailSmtpPro) {
+    plugins.push({
+      to: '/wp-mail-smtp',
+      icon: 'i-lucide-mail-check',
+      label: 'WP Mail SMTP',
+      active: route.path.startsWith('/wp-mail-smtp')
+    })
+  }
+
+  if (setupSettings.value?.features.wpRocketCache) {
+    plugins.push({
+      to: '/wp-rocket-cache',
+      icon: 'i-lucide-rocket',
+      label: 'WP Rocket Cache',
+      active: route.path.startsWith('/wp-rocket-cache')
+    })
+  }
+
+
+
   return [
-    primaryLinks,
+    [primaryLinks, plugins],
     [[
     {
       to: '/settings',
@@ -160,8 +173,9 @@ const links = computed<NavigationMenuItem[][]>(() => {
       </template>
 
       <template #footer="{ collapsed }">
-       <div class="flex flex-col w-full">
+      <div class="flex flex-col w-full">
           <PackageJobProgressBar :collapsed="collapsed" />
+          <WpRocketCacheJobProgressBar :collapsed="collapsed" />
           <SiteScanProgressBar :collapsed="collapsed" />
         </div>
       </template>

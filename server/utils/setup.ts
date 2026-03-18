@@ -40,6 +40,7 @@ export const WP_MAIL_SMTP_PRO_AWS_REGIONS = [
 export type SetupSettings = {
   features: {
     wpMailSmtpPro: boolean
+    wpRocketCache: boolean
   }
 }
 
@@ -94,7 +95,8 @@ export type StoredWpMailSmtpProSettings = {
 export function getDefaultSetupSettings(): SetupSettings {
   return {
     features: {
-      wpMailSmtpPro: false
+      wpMailSmtpPro: false,
+      wpRocketCache: false
     }
   }
 }
@@ -107,7 +109,8 @@ export async function getSetupSettings(): Promise<SetupSettings> {
 export function normalizeSetupSettings(settings: Partial<SetupSettings> | null | undefined): SetupSettings {
   return {
     features: {
-      wpMailSmtpPro: Boolean(settings?.features?.wpMailSmtpPro)
+      wpMailSmtpPro: Boolean(settings?.features?.wpMailSmtpPro),
+      wpRocketCache: Boolean(settings?.features?.wpRocketCache)
     }
   }
 }

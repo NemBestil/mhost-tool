@@ -66,6 +66,22 @@
                 </p>
               </div>
 
+              <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1">
+                    <p class="font-medium">WP Rocket Cache</p>
+                    <p class="text-sm text-neutral-500">
+                      Enable WP Rocket cache management and the main navigation section for cache clearing across sites.
+                    </p>
+                  </div>
+                  <USwitch v-model="form.features.wpRocketCache" :disabled="isSaving" />
+                </div>
+
+                <p class="mt-3 text-xs text-neutral-500">
+                  When enabled, the WP Rocket Cache section appears in the main navigation.
+                </p>
+              </div>
+
               <div class="flex justify-end">
                 <UButton
                   label="Save settings"
@@ -94,7 +110,8 @@ const { data, refetch } = useSetupSettingsQuery()
 
 const form = reactive({
   features: {
-    wpMailSmtpPro: false
+    wpMailSmtpPro: false,
+    wpRocketCache: false
   }
 })
 
@@ -106,10 +123,12 @@ watch(data, (value) => {
   }
 
   form.features.wpMailSmtpPro = value.features.wpMailSmtpPro
+  form.features.wpRocketCache = value.features.wpRocketCache
 }, { immediate: true })
 
 const hasChanges = computed(() => {
   return form.features.wpMailSmtpPro !== Boolean(data.value?.features.wpMailSmtpPro)
+    || form.features.wpRocketCache !== Boolean(data.value?.features.wpRocketCache)
 })
 
 const pages = computed(() => [
@@ -135,7 +154,8 @@ const saveSettings = async () => {
       method: 'PUT',
       body: {
         features: {
-          wpMailSmtpPro: form.features.wpMailSmtpPro
+          wpMailSmtpPro: form.features.wpMailSmtpPro,
+          wpRocketCache: form.features.wpRocketCache
         }
       }
     })

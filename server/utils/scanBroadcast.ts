@@ -1,7 +1,7 @@
 import type { Peer } from 'crossws'
 
 export interface BroadcastEvent {
-  channel?: 'scan' | 'upload' | 'package-job' | 'custom-file-job'
+  channel?: 'scan' | 'upload' | 'package-job' | 'custom-file-job' | 'wp-rocket-cache-job'
   type: string
   message: string
   serverId?: string

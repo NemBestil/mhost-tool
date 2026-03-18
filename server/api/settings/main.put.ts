@@ -4,7 +4,8 @@ import { z } from 'zod'
 
 const bodySchema = z.object({
   features: z.object({
-    wpMailSmtpPro: z.boolean()
+    wpMailSmtpPro: z.boolean(),
+    wpRocketCache: z.boolean()
   })
 })
 
