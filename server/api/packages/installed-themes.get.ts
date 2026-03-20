@@ -1,6 +1,7 @@
 import { prisma } from '#server/utils/db'
 import { runVersionChecksIfNeeded } from '#server/utils/wordpressOrgApi'
 import { compareVersions, isVersionNewer } from '#server/utils/uploadedPackages'
+import { getSiteCveDetails } from '#server/utils/cveDatabase'
 
 type InstalledThemeRow = {
   slug: string
@@ -17,6 +18,7 @@ type InstalledThemeRow = {
   upToDateCount: number
   outdatedCount: number
   outdatedInstallationIds: string[]
+  maxCveScore: number | null
 }
 
 export default defineEventHandler(async () => {
@@ -78,7 +80,8 @@ export default defineEventHandler(async () => {
         totalInstallations: 1,
         upToDateCount: isOutdated ? 0 : 1,
         outdatedCount: isOutdated ? 1 : 0,
-        outdatedInstallationIds: isOutdated ? [theme.installation.id] : []
+        outdatedInstallationIds: isOutdated ? [theme.installation.id] : [],
+        maxCveScore: null
       })
       continue
     }
@@ -127,6 +130,17 @@ export default defineEventHandler(async () => {
   // Sort versions within each theme (newest first)
   for (const theme of themeMap.values()) {
     theme.versions.sort((a, b) => compareVersions(b.version, a.version))
+  }
+
+  // Enrich with CVE scores
+  const allThemeVersions = [...themeMap.values()].flatMap(t =>
+    t.versions.map(v => ({ slug: t.slug, version: v.version }))
+  )
+  const cveScores = await getSiteCveDetails([], allThemeVersions)
+
+  for (const theme of themeMap.values()) {
+    const score = cveScores.get(`theme:${theme.slug}`)
+    theme.maxCveScore = score ?? null
   }
 
   // Convert to array and sort by title/name

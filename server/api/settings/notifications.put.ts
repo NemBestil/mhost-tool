@@ -20,7 +20,9 @@ const bodySchema = z.object({
   }),
   reports: z.object({
     recipients: z.array(z.string()).default([]),
-    newSitesFound: z.boolean().default(false)
+    newSitesFound: z.boolean().default(false),
+    cveAlert: z.boolean().default(false),
+    cveAlertMinScore: z.number().min(0).max(10).default(7.0)
   })
 })
 
@@ -73,7 +75,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (body.reports.newSitesFound && recipients.length === 0) {
+  if ((body.reports.newSitesFound || body.reports.cveAlert) && recipients.length === 0) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Validation error',
@@ -89,7 +91,9 @@ export default defineEventHandler(async (event) => {
   const reports = normalizeNotificationReportsSettings({
     recipients,
     reports: {
-      newSitesFound: body.reports.newSitesFound
+      newSitesFound: body.reports.newSitesFound,
+      cveAlert: body.reports.cveAlert,
+      cveAlertMinScore: body.reports.cveAlertMinScore
     }
   })
 
@@ -103,7 +107,7 @@ export default defineEventHandler(async (event) => {
     smtpConfigured: true,
     reports: {
       recipients: reports.recipients,
-      newSitesFound: reports.reports.newSitesFound
+      ...reports.reports
     }
   }
 })

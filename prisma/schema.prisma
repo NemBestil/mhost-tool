@@ -242,6 +242,42 @@ model ServerDisk {
   @@map("server_disks")
 }
 
+model Vulnerability {
+  id          String                  @id // UUID from Wordfence
+  title       String
+  description String?
+  cve         String?                 // e.g. "CVE-2024-1234"
+  cveLink     String?                 // e.g. "https://www.cve.org/CVERecord?id=CVE-2024-1234"
+  cvssScore   Float?                  // 0-10
+  cvssRating  String?                 // "Low", "Medium", "High", "Critical"
+  cvssVector  String?
+  copyrights  String?                 // JSON string with copyright notices
+  published   DateTime?
+  updated     DateTime?
+  software    VulnerabilitySoftware[]
+
+  @@map("vulnerabilities")
+}
+
+model VulnerabilitySoftware {
+  id              String        @id @default(cuid())
+  vulnerabilityId String
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+  type            String        // "plugin" or "theme"
+  name            String
+  slug            String
+  patched         Boolean       @default(false)
+  patchedVersions String?       // JSON array of patched versions
+  fromVersion     String?
+  fromInclusive   Boolean       @default(true)
+  toVersion       String?
+  toInclusive     Boolean       @default(true)
+
+  @@index([type, slug])
+  @@index([vulnerabilityId])
+  @@map("vulnerability_software")
+}
+
 model Option {
   key   String @id
   value String

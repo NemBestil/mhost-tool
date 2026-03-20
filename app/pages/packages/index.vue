@@ -9,6 +9,13 @@
           multiple
           @change="onFileInputChange"
       >
+      <UDropdownMenu :items="moreMenuItems">
+        <UButton
+            icon="i-lucide-more-horizontal"
+            color="neutral"
+            variant="ghost"
+        />
+      </UDropdownMenu>
       <UButton
           icon="i-lucide-upload"
           label="Upload"
@@ -177,6 +184,18 @@
                 </div>
               </template>
 
+              <template #maxCveScore-cell="{ row }">
+                <UBadge
+                  v-if="row.original.maxCveScore != null"
+                  :color="getCveColor(row.original.maxCveScore)"
+                  variant="subtle"
+                  class="cursor-pointer"
+                  @click="openPackageCveModal('plugin', row.original.slug, row.original.title || row.original.slug)"
+                >
+                  {{ row.original.maxCveScore.toFixed(1) }}
+                </UBadge>
+              </template>
+
               <template #source-cell="{ row }">
                 <UBadge
                     :color="row.original.source === 'wordpress.org' ? 'success' : row.original.source === 'external' ? 'neutral' : 'warning'"
@@ -287,6 +306,18 @@
                       @click.stop="queuePackageUpdates('theme', row.original.slug, row.original.outdatedInstallationIds)"
                   />
                 </div>
+              </template>
+
+              <template #maxCveScore-cell="{ row }">
+                <UBadge
+                  v-if="row.original.maxCveScore != null"
+                  :color="getCveColor(row.original.maxCveScore)"
+                  variant="subtle"
+                  class="cursor-pointer"
+                  @click="openPackageCveModal('theme', row.original.slug, row.original.title || row.original.slug)"
+                >
+                  {{ row.original.maxCveScore.toFixed(1) }}
+                </UBadge>
               </template>
 
               <template #source-cell="{ row }">
@@ -633,10 +664,19 @@
         v-model:open="isMissingSitesModalOpen"
         :package-details="missingSitesModalPackageDetails"
     />
+
+    <PackageCveModal
+        v-model:open="packageCveModalOpen"
+        :type="packageCveModalType"
+        :slug="packageCveModalSlug"
+        :name="packageCveModalName"
+    />
   </NuxtLayout>
 </template>
 
 <script setup lang="ts">
+import {h} from 'vue'
+import {UButton} from '#components'
 import type {DropdownMenuItem, TableColumn} from '@nuxt/ui'
 import {formatDistanceToNow} from 'date-fns'
 import {useQuery, useQueryClient} from '@tanstack/vue-query'
@@ -674,6 +714,7 @@ type InstalledPackageRow = {
   upToDateCount: number
   outdatedCount: number
   outdatedInstallationIds: string[]
+  maxCveScore: number | null
 }
 
 type VersionsResponse = {
@@ -696,6 +737,58 @@ const toast = useToast()
 const uploadStore = usePackageUploadStore()
 const packageJobStore = usePackageJobStore()
 const queryClient = useQueryClient()
+
+const isCveUpdating = ref(false)
+
+const moreMenuItems = computed(() => [
+  [
+    {
+      label: 'Update CVE database',
+      icon: 'lucide:shield-alert',
+      disabled: isCveUpdating.value,
+      onSelect: () => runCveUpdate()
+    }
+  ]
+])
+
+const runCveUpdate = async () => {
+  isCveUpdating.value = true
+
+  const progressToast = toast.add({
+    title: 'Updating CVE database...',
+    description: 'Fetching vulnerabilities from Wordfence.',
+    icon: 'i-lucide-loader-2',
+    duration: 0
+  })
+
+  try {
+    const result = await useApiClient()('/cve/update', { method: 'POST' }) as {
+      totalVulnerabilities: number
+      sitesUpdated: number
+    }
+
+    toast.remove(progressToast.id)
+    toast.add({
+      title: 'CVE database updated',
+      description: `${result.totalVulnerabilities} vulnerabilities loaded, ${result.sitesUpdated} sites updated.`,
+      color: 'success',
+      icon: 'i-lucide-check-circle'
+    })
+
+    refetchInstalledPlugins()
+    refetchInstalledThemes()
+  } catch (error: any) {
+    toast.remove(progressToast.id)
+    toast.add({
+      title: 'CVE update failed',
+      description: error?.data?.message || error?.message || 'Unknown error',
+      color: 'error',
+      icon: 'i-lucide-alert-circle'
+    })
+  } finally {
+    isCveUpdating.value = false
+  }
+}
 
 // Fetch uploaded packages
 const {data: packages, refetch: refetchPackages} = useQuery<{
@@ -737,6 +830,19 @@ const isSitesModalOpen = ref(false)
 const activeSitesKind = ref<InstalledPackageKind>('installed-plugins')
 const activeSitesSlug = ref('')
 const activeSitesTitle = ref<string | null>(null)
+
+// Package CVE modal state
+const packageCveModalOpen = ref(false)
+const packageCveModalType = ref<'plugin' | 'theme' | null>(null)
+const packageCveModalSlug = ref<string | null>(null)
+const packageCveModalName = ref<string | null>(null)
+
+const openPackageCveModal = (type: 'plugin' | 'theme', slug: string, name: string) => {
+  packageCveModalType.value = type
+  packageCveModalSlug.value = slug
+  packageCveModalName.value = name
+  packageCveModalOpen.value = true
+}
 
 // Missing-sites modal state (for installing package on sites where it is not installed)
 const isMissingSitesModalOpen = ref(false)
@@ -783,24 +889,50 @@ const tabItems = [
   }
 ]
 
+const createSortableColumn = (accessorKey: string, label: string, sortingFn?: any): TableColumn<InstalledPackageRow> => {
+  const column: TableColumn<InstalledPackageRow> = {
+    accessorKey,
+    header: ({column}) => {
+      const isSorted = column.getIsSorted()
+      return h(UButton, {
+        color: 'neutral',
+        variant: 'ghost',
+        label,
+        icon: isSorted ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow') : 'i-lucide-arrow-up-down',
+        class: '-mx-2.5 -my-2.5',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+      })
+    }
+  }
+
+  if (sortingFn) {
+    column.sortingFn = sortingFn
+  }
+
+  return column
+}
+
 // Columns for installed plugins
 const installedPluginColumns: TableColumn<InstalledPackageRow>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Plugin'
-  },
+  createSortableColumn('name', 'Plugin', (rowA: any, rowB: any) => {
+    const a = (rowA.original.title || rowA.original.slug).toLowerCase()
+    const b = (rowB.original.title || rowB.original.slug).toLowerCase()
+    return a.localeCompare(b)
+  }),
   {
     id: 'versions',
     header: 'Installed Versions'
   },
-  {
-    accessorKey: 'totalInstallations',
-    header: 'Sites'
-  },
+  createSortableColumn('totalInstallations', 'Sites'),
   {
     accessorKey: 'latestVersion',
     header: 'Latest'
   },
+  createSortableColumn('maxCveScore', 'CVE', (rowA: any, rowB: any) => {
+    const a = rowA.original.maxCveScore ?? -1
+    const b = rowB.original.maxCveScore ?? -1
+    return a - b
+  }),
   {
     accessorKey: 'source',
     header: 'Source'
@@ -809,22 +941,25 @@ const installedPluginColumns: TableColumn<InstalledPackageRow>[] = [
 
 // Columns for installed themes
 const installedThemeColumns: TableColumn<InstalledPackageRow>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Theme'
-  },
+  createSortableColumn('name', 'Theme', (rowA: any, rowB: any) => {
+    const a = (rowA.original.title || rowA.original.slug).toLowerCase()
+    const b = (rowB.original.title || rowB.original.slug).toLowerCase()
+    return a.localeCompare(b)
+  }),
   {
     id: 'versions',
     header: 'Installed Versions'
   },
-  {
-    accessorKey: 'totalInstallations',
-    header: 'Sites'
-  },
+  createSortableColumn('totalInstallations', 'Sites'),
   {
     accessorKey: 'latestVersion',
     header: 'Latest'
   },
+  createSortableColumn('maxCveScore', 'CVE', (rowA: any, rowB: any) => {
+    const a = rowA.original.maxCveScore ?? -1
+    const b = rowB.original.maxCveScore ?? -1
+    return a - b
+  }),
   {
     accessorKey: 'source',
     header: 'Source'
@@ -1276,6 +1411,13 @@ const formatRelativeTime = (dateStr: string) => {
 
 const formatFullDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString()
+}
+
+const getCveColor = (cve: number) => {
+  if (cve >= 7) return 'error'
+  if (cve >= 4) return 'warning'
+  if (cve >= 2) return 'info'
+  return 'success'
 }
 
 watchThrottled(() => packageJobStore.lastCompletedProgress?.updatedAt, (updatedAt, previous) => {

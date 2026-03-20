@@ -93,6 +93,19 @@
         </UTooltip>
       </template>
 
+      <!-- CVE Column -->
+      <template #currentCve-cell="{ row }">
+        <UBadge
+          v-if="row.original.currentCve != null"
+          :color="getCveColor(row.original.currentCve)"
+          variant="subtle"
+          class="cursor-pointer"
+          @click="openCveModal(row.original.id)"
+        >
+          {{ row.original.currentCve.toFixed(1) }}
+        </UBadge>
+      </template>
+
       <!-- Last Scan Column -->
       <template #lastScanAt-cell="{ row }">
           <span v-if="row.original.lastScanAt" class="text-sm" :title="formatFullDate(row.original.lastScanAt)">
@@ -176,6 +189,8 @@
         </div>
       </template>
     </UModal>
+
+    <SiteCveModal v-model:open="cveModalOpen" :site-id="cveModalSiteId" />
   </NuxtLayout>
 </template>
 
@@ -259,6 +274,15 @@ const selectedCount = computed((): number => table.value?.tableApi?.getFilteredS
 const getSelectedSiteIds = () => {
   const selectedRows = table.value?.tableApi?.getFilteredSelectedRowModel().rows || []
   return selectedRows.map((row: any) => row.original.id)
+}
+
+// CVE modal state
+const cveModalOpen = ref(false)
+const cveModalSiteId = ref<string | null>(null)
+
+const openCveModal = (siteId: string) => {
+  cveModalSiteId.value = siteId
+  cveModalOpen.value = true
 }
 
 // Delete modal state
@@ -366,6 +390,11 @@ const columns: TableColumn<Site>[] = [
     header: 'Status',
     accessorFn: (row: Site) => row.hostingStatus,
   },
+  createSortableColumn('currentCve', 'CVE', (rowA: any, rowB: any) => {
+    const a = rowA.original.currentCve ?? -1
+    const b = rowB.original.currentCve ?? -1
+    return a - b
+  }),
   createSortableColumn('lastScanAt', 'Last Scan'),
   {
     id: 'actions',
@@ -414,6 +443,13 @@ const decodeEntities = (text: string) => {
   const textarea = document.createElement('textarea')
   textarea.innerHTML = text
   return textarea.value
+}
+
+const getCveColor = (cve: number) => {
+  if (cve >= 7) return 'error'
+  if (cve >= 4) return 'warning'
+  if (cve >= 2) return 'info'
+  return 'success'
 }
 
 const getHostingStatusColor = (status: string) => {

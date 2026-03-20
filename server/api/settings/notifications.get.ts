@@ -12,7 +12,7 @@ export default defineEventHandler(async () => {
     smtpConfigured: isValidSmtpSettings(smtp),
     reports: {
       recipients: reports.recipients,
-      ... reports.reports
+      ...reports.reports
     }
   }
 })

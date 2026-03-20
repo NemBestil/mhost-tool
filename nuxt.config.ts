@@ -28,7 +28,8 @@ export default defineNuxtConfig({
       '* * * * *': ['ping-sites-high'],
       '*/2 * * * *': ['ping-sites-normal'],
       '0 3 * * *': ['cleanup-user-sessions'],
-      '0 5 * * *': ['scan-all-servers-daily']
+      '0 5 * * *': ['scan-all-servers-daily'],
+      '30 5 * * *': ['update-cve-database']
     }
   }
 })

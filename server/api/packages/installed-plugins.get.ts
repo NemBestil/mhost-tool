@@ -1,6 +1,7 @@
 import { prisma } from '#server/utils/db'
 import { runVersionChecksIfNeeded } from '#server/utils/wordpressOrgApi'
 import { compareVersions, isVersionNewer } from '#server/utils/uploadedPackages'
+import { getSiteCveDetails } from '#server/utils/cveDatabase'
 
 type InstalledPluginRow = {
   slug: string
@@ -17,6 +18,7 @@ type InstalledPluginRow = {
   upToDateCount: number
   outdatedCount: number
   outdatedInstallationIds: string[]
+  maxCveScore: number | null
 }
 
 export default defineEventHandler(async () => {
@@ -78,7 +80,8 @@ export default defineEventHandler(async () => {
         totalInstallations: 1,
         upToDateCount: isOutdated ? 0 : 1,
         outdatedCount: isOutdated ? 1 : 0,
-        outdatedInstallationIds: isOutdated ? [plugin.installation.id] : []
+        outdatedInstallationIds: isOutdated ? [plugin.installation.id] : [],
+        maxCveScore: null
       })
       continue
     }
@@ -127,6 +130,23 @@ export default defineEventHandler(async () => {
   // Sort versions within each plugin (newest first)
   for (const plugin of pluginMap.values()) {
     plugin.versions.sort((a, b) => compareVersions(b.version, a.version))
+  }
+
+  // Enrich with CVE scores - build list of all slug+version combos
+  const allPluginVersions = [...pluginMap.values()].flatMap(p =>
+    p.versions.map(v => ({ slug: p.slug, version: v.version }))
+  )
+  const cveScores = await getSiteCveDetails(allPluginVersions, [])
+
+  for (const plugin of pluginMap.values()) {
+    let maxScore: number | null = null
+    for (const v of plugin.versions) {
+      const score = cveScores.get(`plugin:${plugin.slug}`)
+      if (score != null && (maxScore === null || score > maxScore)) {
+        maxScore = score
+      }
+    }
+    plugin.maxCveScore = maxScore
   }
 
   // Convert to array and sort by title/name

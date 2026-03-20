@@ -111,7 +111,7 @@
             </div>
 
             <div v-if="site.currentCve !== null" class="flex items-center gap-1.5">
-              <UBadge :color="getCveColor(site.currentCve)" variant="subtle">
+              <UBadge :color="getCveColor(site.currentCve)" variant="subtle" class="cursor-pointer" @click="cveModalOpen = true">
                 CVE Score: {{ site.currentCve.toFixed(1) }}
               </UBadge>
             </div>
@@ -179,6 +179,11 @@
                   </UBadge>
                 </div>
               </template>
+              <template #cveScore-cell="{ row }">
+                <UBadge v-if="row.original.cveScore != null" :color="getCveColor(row.original.cveScore)" variant="subtle">
+                  {{ row.original.cveScore.toFixed(1) }}
+                </UBadge>
+              </template>
               <template #isEnabled-cell="{ row }">
                 <UBadge v-if="row.original.isEnabled" color="success" variant="subtle">Active</UBadge>
                 <UBadge v-else color="neutral" variant="subtle">Inactive</UBadge>
@@ -241,6 +246,11 @@
                     {{ row.original.source === 'wordpress.org' ? 'WordPress®.org' : row.original.source }}
                   </UBadge>
                 </div>
+              </template>
+              <template #cveScore-cell="{ row }">
+                <UBadge v-if="row.original.cveScore != null" :color="getCveColor(row.original.cveScore)" variant="subtle">
+                  {{ row.original.cveScore.toFixed(1) }}
+                </UBadge>
               </template>
               <template #isEnabled-cell="{ row }">
                 <div class="flex flex-col gap-1">
@@ -527,12 +537,16 @@
         </div>
       </template>
     </UModal>
+
+    <SiteCveModal v-model:open="cveModalOpen" :site-id="siteId" />
   </NuxtLayout>
 </template>
 
 <script lang="ts" setup>
+import { h } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
+import { UButton } from '#components'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import type { TypedInternalResponse } from 'nitropack'
 
@@ -612,14 +626,42 @@ const getRouteTab = (value: unknown): SiteTab => {
 
 const activeTab = ref<SiteTab>(getRouteTab(route.query.tab))
 
+const createSortableHeader = (label: string) => {
+  return ({ column }: any) => {
+    const isSorted = column.getIsSorted()
+    return h(UButton, {
+      color: 'neutral',
+      variant: 'ghost',
+      label,
+      icon: isSorted ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow') : 'i-lucide-arrow-up-down',
+      class: '-mx-2.5 -my-2.5',
+      onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+    })
+  }
+}
+
 const pluginColumns = [
   {
     accessorKey: 'name',
-    header: 'Plugin'
+    header: createSortableHeader('Plugin'),
+    sortingFn: (rowA: any, rowB: any) => {
+      const a = rowA.original.title || rowA.original.name
+      const b = rowB.original.title || rowB.original.name
+      return a.localeCompare(b)
+    }
   },
   {
     accessorKey: 'version',
     header: 'Version'
+  },
+  {
+    accessorKey: 'cveScore',
+    header: createSortableHeader('CVE'),
+    sortingFn: (rowA: any, rowB: any) => {
+      const a = rowA.original.cveScore ?? -1
+      const b = rowB.original.cveScore ?? -1
+      return a - b
+    }
   },
   {
     accessorKey: 'isEnabled',
@@ -634,11 +676,25 @@ const pluginColumns = [
 const themeColumns = [
   {
     accessorKey: 'name',
-    header: 'Theme'
+    header: createSortableHeader('Theme'),
+    sortingFn: (rowA: any, rowB: any) => {
+      const a = rowA.original.title || rowA.original.name
+      const b = rowB.original.title || rowB.original.name
+      return a.localeCompare(b)
+    }
   },
   {
     accessorKey: 'version',
     header: 'Version'
+  },
+  {
+    accessorKey: 'cveScore',
+    header: createSortableHeader('CVE'),
+    sortingFn: (rowA: any, rowB: any) => {
+      const a = rowA.original.cveScore ?? -1
+      const b = rowB.original.cveScore ?? -1
+      return a - b
+    }
   },
   {
     accessorKey: 'isEnabled',
@@ -755,6 +811,7 @@ watch(activeTab, async (value) => {
   })
 })
 
+const cveModalOpen = ref(false)
 const setPasswordModalOpen = ref(false)
 const resetPasswordModalOpen = ref(false)
 const changeEmailModalOpen = ref(false)

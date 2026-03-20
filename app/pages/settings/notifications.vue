@@ -132,6 +132,31 @@
                   <USwitch v-model="reportNewSitesFound" :disabled="isSaving || isTesting" />
                 </div>
               </div>
+
+              <div class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1 text-sm">
+                    <p class="font-medium text-default">CVE alert</p>
+                    <p class="text-sm text-neutral-500">
+                      Send a report after the nightly CVE scan when sites have vulnerabilities at or above the minimum CVSS score.
+                    </p>
+                  </div>
+                  <USwitch v-model="reportCveAlert" :disabled="isSaving || isTesting" />
+                </div>
+                <div v-if="reportCveAlert" class="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800">
+                  <UFormField label="Minimum CVSS score">
+                    <UInput
+                      v-model.number="reportCveAlertMinScore"
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.1"
+                      :disabled="isSaving || isTesting"
+                      class="w-24"
+                    />
+                  </UFormField>
+                </div>
+              </div>
             </div>
 
             <div class="flex flex-wrap gap-2 justify-end">
@@ -205,6 +230,8 @@ type NotificationSettingsResponse = {
   reports: {
     recipients: string[]
     newSitesFound: boolean
+    cveAlert: boolean
+    cveAlertMinScore: number
   }
 }
 
@@ -231,6 +258,8 @@ const form = reactive<SmtpForm>({
 const testRecipient = ref('')
 const reportRecipientsInput = ref('')
 const reportNewSitesFound = ref(false)
+const reportCveAlert = ref(false)
+const reportCveAlertMinScore = ref(7.0)
 const isSaving = ref(false)
 const isTesting = ref(false)
 const fieldErrors = ref<Partial<Record<SmtpFieldErrorPath, string>>>({})
@@ -251,6 +280,8 @@ watch(data, (value) => {
 
   reportRecipientsInput.value = value.reports.recipients.join('\n')
   reportNewSitesFound.value = value.reports.newSitesFound
+  reportCveAlert.value = value.reports.cveAlert
+  reportCveAlertMinScore.value = value.reports.cveAlertMinScore
 }, { immediate: true })
 
 watch(() => form.port, (port) => {
@@ -319,7 +350,9 @@ const saveSettings = async () => {
         },
         reports: {
           recipients: parseReportRecipients(reportRecipientsInput.value),
-          newSitesFound: reportNewSitesFound.value
+          newSitesFound: reportNewSitesFound.value,
+          cveAlert: reportCveAlert.value,
+          cveAlertMinScore: reportCveAlertMinScore.value
         }
       }
     })

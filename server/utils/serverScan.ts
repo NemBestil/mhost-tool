@@ -3,6 +3,7 @@ import { openSshConnection, type SshConnection, type SshSession } from '#server/
 import { broadcastScanEvent, type BroadcastEvent } from '#server/utils/scanBroadcast'
 import { getOrCreateMonitoringConfig } from '#server/utils/monitoring'
 import { sendNewSitesFoundReport, type NewSiteReportEntry } from '#server/utils/notificationReports'
+import { associateCvesToSites } from '#server/utils/cveDatabase'
 import { validateAmazonSesCredentials } from '#server/utils/amazonSes'
 import {
   normalizeWpMailSmtpScanRecord,
@@ -600,6 +601,12 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
       }
     } catch (error) {
       console.error(`[serverScan] Post-scan reporting failed for ${server.id}:`, error)
+    }
+
+    try {
+      await associateCvesToSites()
+    } catch (error) {
+      console.error(`[serverScan] CVE association failed for ${server.id}:`, error)
     }
 
     sendEvent('complete', `Scan completed: ${successCount} successful, ${failedCount} failed`, { success: successCount, failed: failedCount })
