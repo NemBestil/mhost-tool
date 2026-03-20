@@ -13,7 +13,8 @@
         <div
           v-for="vuln in vulnerabilities"
           :key="vuln.vulnerabilityId"
-          class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3"
+          class="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+          @click="openPackageCve(vuln)"
         >
           <div class="flex items-start gap-3">
             <UBadge :color="getCveColor(vuln.cvssScore)" variant="subtle" class="shrink-0 mt-0.5">
@@ -34,37 +35,7 @@
                 <span class="text-neutral-500">v{{ vuln.installedVersion }}</span>
               </div>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <UPopover v-if="vuln.copyrights && vuln.copyrights.length > 0">
-                <UButton
-                  icon="lucide:copyright"
-                  color="neutral"
-                  variant="ghost"
-                  size="sm"
-                />
-                <template #content>
-                  <div class="p-3 max-w-xs space-y-2">
-                    <p
-                      v-for="(cr, index) in vuln.copyrights"
-                      :key="index"
-                      class="text-sm text-neutral-500"
-                    >
-                      {{ cr.notice }}
-                    </p>
-                  </div>
-                </template>
-              </UPopover>
-              <UButton
-                v-if="vuln.cveLink"
-                icon="lucide:external-link"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                :href="vuln.cveLink"
-                target="_blank"
-                tag="a"
-              />
-            </div>
+            <Icon name="lucide:chevron-right" class="size-4 text-neutral-400 shrink-0 mt-1" />
           </div>
         </div>
       </div>
@@ -76,6 +47,13 @@
       </div>
     </template>
   </UModal>
+
+  <PackageCveModal
+    v-model:open="packageCveModalOpen"
+    :type="packageCveModalType"
+    :slug="packageCveModalSlug"
+    :name="packageCveModalName"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -110,6 +88,18 @@ const { data, status: queryStatus } = useQuery<{ vulnerabilities: CveDetail[] }>
 
 const isLoading = computed(() => queryStatus.value === 'pending' && isOpen.value)
 const vulnerabilities = computed(() => data.value?.vulnerabilities ?? [])
+
+const packageCveModalOpen = ref(false)
+const packageCveModalType = ref<'plugin' | 'theme' | null>(null)
+const packageCveModalSlug = ref<string | null>(null)
+const packageCveModalName = ref<string | null>(null)
+
+const openPackageCve = (vuln: CveDetail) => {
+  packageCveModalType.value = vuln.softwareType as 'plugin' | 'theme'
+  packageCveModalSlug.value = vuln.softwareSlug
+  packageCveModalName.value = vuln.softwareName
+  packageCveModalOpen.value = true
+}
 
 const getCveColor = (cve: number) => {
   if (cve >= 7) return 'error'
