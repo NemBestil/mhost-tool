@@ -320,13 +320,22 @@ export async function getSiteCveDetails(
   themes: { slug: string; version: string }[]
 ): Promise<Map<string, number>> {
   // Returns a map of "type:slug" -> highest CVSS score
+  const pluginSlugs = [...new Set(plugins.map(p => p.slug))]
+  const themeSlugs = [...new Set(themes.map(t => t.slug))]
+
+  if (pluginSlugs.length === 0 && themeSlugs.length === 0) {
+    return new Map()
+  }
+
+  const softwareConditions = [
+    ...(pluginSlugs.length > 0 ? [{ type: 'plugin' as const, slug: { in: pluginSlugs } }] : []),
+    ...(themeSlugs.length > 0 ? [{ type: 'theme' as const, slug: { in: themeSlugs } }] : [])
+  ]
+
   const allVulnSoftware = await prisma.vulnerabilitySoftware.findMany({
     where: {
       vulnerability: { cvssScore: { not: null } },
-      OR: [
-        ...plugins.map(p => ({ type: 'plugin' as const, slug: p.slug })),
-        ...themes.map(t => ({ type: 'theme' as const, slug: t.slug }))
-      ]
+      OR: softwareConditions
     },
     select: {
       type: true,
