@@ -19,15 +19,6 @@
           <WpRocketCacheJobActivity />
         </div>
 
-        <div class="px-4">
-          <UAlert
-            color="neutral"
-            variant="soft"
-            title="Scan-backed inventory"
-            description="Plugin status is based on the latest site scan. Cache clearing is only available for active WP Rocket installations."
-          />
-        </div>
-
         <div class="flex items-center gap-2 px-4 py-4 border-b border-neutral-200 dark:border-neutral-800 flex-wrap">
           <UInput
             v-model="search"
