@@ -29,12 +29,12 @@ export function toSafeSlug(value: string): string {
 
 export function parseWordPressHeaders(content: string, titleHeader: string): ParseWordPressHeadersResult | null {
   const normalized = content.slice(0, HEADER_MAX_BYTES)
-  const titleMatch = normalized.match(new RegExp(`\\*\\s${escapeRegExp(titleHeader)}\\s*:\\s*(.+)$`, 'im'))
+  const titleMatch = normalized.match(new RegExp(`(?:\\*\\s)?${escapeRegExp(titleHeader)}\\s*:\\s*(.+)$`, 'im'))
   if (!titleMatch?.[1]) {
     return null
   }
 
-  const versionMatch = normalized.match(/\\*\s*Version\s*:\s*(.+)$/im)
+  const versionMatch = normalized.match(/(?:\*\s)?Version\s*:\s*(.+)$/im)
 
   return {
     title: titleMatch[1].trim(),
