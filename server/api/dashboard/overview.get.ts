@@ -2,53 +2,25 @@ import { MonitoringLevel, MonitoringStatus } from '@@/prisma/generated/client'
 import { prisma } from '#server/utils/db'
 import { readMonitoringConfig } from '#server/utils/monitoring'
 import { isVersionNewer } from '#server/utils/uploadedPackages'
+import { getSetupSettings } from '#server/utils/setup'
 
 export default defineEventHandler(async () => {
   const [
     serversCount,
-    totalSites,
-    highPrioritySites,
-    normalPrioritySites,
-    disabledSites,
-    upSites,
-    downSites,
-    unknownSites,
+    installations,
     monitoringConfig,
     plugins,
     themes,
     uploadedPlugins,
-    uploadedThemes
+    uploadedThemes,
+    setupSettings
   ] = await Promise.all([
     prisma.server.count(),
-    prisma.wordPressInstallation.count(),
-    prisma.wordPressInstallation.count({
-      where: {
-        monitoringLevel: MonitoringLevel.HIGH
-      }
-    }),
-    prisma.wordPressInstallation.count({
-      where: {
-        monitoringLevel: MonitoringLevel.NORMAL
-      }
-    }),
-    prisma.wordPressInstallation.count({
-      where: {
-        monitoringLevel: MonitoringLevel.NONE
-      }
-    }),
-    prisma.wordPressInstallation.count({
-      where: {
-        monitoringStatus: MonitoringStatus.UP
-      }
-    }),
-    prisma.wordPressInstallation.count({
-      where: {
-        monitoringStatus: MonitoringStatus.DOWN
-      }
-    }),
-    prisma.wordPressInstallation.count({
-      where: {
-        monitoringStatus: MonitoringStatus.UNKNOWN
+    prisma.wordPressInstallation.findMany({
+      select: {
+        siteUrl: true,
+        monitoringLevel: true,
+        monitoringStatus: true
       }
     }),
     readMonitoringConfig(),
@@ -75,8 +47,44 @@ export default defineEventHandler(async () => {
     prisma.uploadedWordPressTheme.findMany({
       where: { isLatest: true },
       select: { slug: true, version: true }
-    })
+    }),
+    getSetupSettings()
   ])
+
+  const devPatterns = setupSettings.developmentSites.split(/\s+/).filter(Boolean)
+  const isDevSite = (url: string) => devPatterns.some(p => url.toLowerCase().includes(p.toLowerCase()))
+
+  let highPrioritySites = 0
+  let normalPrioritySites = 0
+  let disabledSites = 0
+  let upSites = 0
+  let downSites = 0
+  let unknownSites = 0
+  let totalDevSites = 0
+  let upDevSites = 0
+  let downDevSites = 0
+
+  for (const site of installations) {
+    const isDev = isDevSite(site.siteUrl)
+
+    if (site.monitoringLevel === MonitoringLevel.HIGH) highPrioritySites++
+    else if (site.monitoringLevel === MonitoringLevel.NORMAL) normalPrioritySites++
+    else if (site.monitoringLevel === MonitoringLevel.NONE) disabledSites++
+
+    if (site.monitoringStatus === MonitoringStatus.UP) {
+      upSites++
+      if (isDev) upDevSites++
+    } else if (site.monitoringStatus === MonitoringStatus.DOWN) {
+      downSites++
+      if (isDev) downDevSites++
+    } else if (site.monitoringStatus === MonitoringStatus.UNKNOWN) {
+      unknownSites++
+    }
+
+    if (isDev) totalDevSites++
+  }
+
+  const totalSites = installations.length
 
   const uploadedPluginLatestMap = new Map(uploadedPlugins.map(item => [item.slug, item.version]))
   const uploadedThemeLatestMap = new Map(uploadedThemes.map(item => [item.slug, item.version]))
@@ -130,11 +138,14 @@ export default defineEventHandler(async () => {
   return {
     serversCount,
     totalSites,
+    totalDevSites,
     highPrioritySites,
     normalPrioritySites,
     disabledSites,
     upSites,
+    upDevSites,
     downSites,
+    downDevSites,
     unknownSites,
     sitesWithOutdatedPlugins,
     sitesWithOutdatedThemes,

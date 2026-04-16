@@ -205,9 +205,15 @@
                   class="font-medium text-neutral-900 dark:text-neutral-50 hover:text-primary transition-colors cursor-pointer truncate w-full block"
                   v-html="decodeEntities(row.original.siteTitle)"
                 />
-                <UBadge v-if="isDevSite(row.original.siteUrl)" color="warning" variant="soft" size="sm">
-                  DEV
-                </UBadge>
+                <UTooltip :text="isDevSite(row.original.siteUrl) ? 'Development Site' : 'Production Site'">
+                  <UBadge
+                    :color="isDevSite(row.original.siteUrl) ? 'warning' : 'info'"
+                    variant="subtle"
+                    class="text-base px-1"
+                  >
+                    <Icon :name="isDevSite(row.original.siteUrl) ? 'lucide:flask-conical' : 'lucide:flask-conical-off'" class="size-4" />
+                  </UBadge>
+                </UTooltip>
               </div>
               <a :href="row.original.siteUrl" target="_blank" rel="noopener noreferrer" class="text-xs text-primary hover:underline">
                 {{ row.original.siteUrl }}

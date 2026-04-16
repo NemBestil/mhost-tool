@@ -176,9 +176,15 @@
             >
               {{ row.original.monitoringStatus === 'DOWN' ? 'Down' : (row.original.monitoringStatus === 'UP' ? 'Up' : 'Unknown') }}
             </UBadge>
-            <UBadge v-if="isDevSite(row.original.siteUrl)" color="warning" variant="soft" size="sm">
-              DEV
-            </UBadge>
+            <UTooltip :text="isDevSite(row.original.siteUrl) ? 'Development Site' : 'Production Site'">
+              <UBadge
+                :color="isDevSite(row.original.siteUrl) ? 'warning' : 'info'"
+                variant="subtle"
+                class="text-base px-1"
+              >
+                <Icon :name="isDevSite(row.original.siteUrl) ? 'lucide:flask-conical' : 'lucide:flask-conical-off'" class="size-4" />
+              </UBadge>
+            </UTooltip>
           </div>
           <UBadge
             :color="row.original.monitoringLevel === 'HIGH' ? 'error' : (row.original.monitoringLevel === 'NORMAL' ? 'primary' : 'neutral')"

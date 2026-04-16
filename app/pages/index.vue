@@ -10,7 +10,12 @@
         </UCard>
         <UCard>
           <div class="text-sm text-neutral-500">Total sites</div>
-          <div class="text-2xl font-semibold mt-1">{{ overview?.totalSites ?? 0 }}</div>
+          <div class="flex items-baseline gap-2">
+            <div class="text-2xl font-semibold mt-1">{{ overview?.totalSites ?? 0 }}</div>
+            <div v-if="overview?.totalDevSites" class="text-sm text-neutral-500 font-medium">
+              ({{ overview.totalDevSites }} dev)
+            </div>
+          </div>
         </UCard>
         <UCard>
           <div class="text-sm text-neutral-500">Sites with outdated plugins</div>
@@ -29,11 +34,21 @@
         </UCard>
         <UCard>
           <div class="text-sm text-neutral-500">Currently down</div>
-          <div class="text-2xl font-semibold mt-1 text-error">{{ overview?.downSites ?? 0 }}</div>
+          <div class="flex items-baseline gap-2">
+            <div class="text-2xl font-semibold mt-1 text-error">{{ overview?.downSites ?? 0 }}</div>
+            <div v-if="overview?.downDevSites" class="text-sm text-neutral-500 font-medium">
+              ({{ overview.downDevSites }} dev)
+            </div>
+          </div>
         </UCard>
         <UCard>
           <div class="text-sm text-neutral-500">Currently up</div>
-          <div class="text-2xl font-semibold mt-1 text-success">{{ overview?.upSites ?? 0 }}</div>
+          <div class="flex items-baseline gap-2">
+            <div class="text-2xl font-semibold mt-1 text-success">{{ overview?.upSites ?? 0 }}</div>
+            <div v-if="overview?.upDevSites" class="text-sm text-neutral-500 font-medium">
+              ({{ overview.upDevSites }} dev)
+            </div>
+          </div>
         </UCard>
         <UCard>
           <div class="text-sm text-neutral-500">Unknown status</div>
@@ -107,11 +122,14 @@ definePageMeta({
 type DashboardOverview = {
   serversCount: number
   totalSites: number
+  totalDevSites: number
   highPrioritySites: number
   normalPrioritySites: number
   disabledSites: number
   upSites: number
+  upDevSites: number
   downSites: number
+  downDevSites: number
   unknownSites: number
   sitesWithOutdatedPlugins: number
   sitesWithOutdatedThemes: number
