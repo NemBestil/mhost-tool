@@ -111,7 +111,8 @@
             <UTable
                 :data="filteredInstalledPlugins"
                 :columns="installedPluginColumns"
-                sticky
+                virtualize
+                class="flex-1"
             >
               <template #name-cell="{ row }">
                 <div class="flex flex-col">
@@ -236,8 +237,8 @@
             <UTable
                 :data="filteredInstalledThemes"
                 :columns="installedThemeColumns"
-                sticky
-                class="flex-1 overflow-auto"
+                virtualize
+                class="flex-1"
             >
               <template #name-cell="{ row }">
                 <div class="flex flex-col">
@@ -339,8 +340,8 @@
             <UTable
                 :data="packages?.plugins || []"
                 :columns="uploadedPluginColumns"
-                sticky
-                class="flex-1 overflow-auto"
+                virtualize
+                class="flex-1"
             >
               <template #name-cell="{ row }">
                 <div
@@ -441,8 +442,8 @@
             <UTable
                 :data="packages?.themes || []"
                 :columns="uploadedThemeColumns"
-                sticky
-                class="flex-1 overflow-auto"
+                virtualize
+                class="flex-1"
             >
               <template #name-cell="{ row }">
                 <div
@@ -603,7 +604,8 @@
           <UTable
               :data="versions"
               :columns="versionColumns"
-              class="max-h-[60vh] overflow-auto"
+              virtualize
+              class="max-h-[60vh]"
           >
             <template #selected-header>
               <UCheckbox

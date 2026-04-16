@@ -1,43 +1,142 @@
 <template>
   <div class="flex-1 flex flex-col min-h-0 pt-2">
     <div class="flex items-center gap-2 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800">
-      <UInput
-        v-model="search"
-        icon="i-lucide-search"
-        placeholder="Search sites..."
-        class="max-w-sm"
-      >
-        <template v-if="search?.length" #trailing>
-          <UButton
-            color="neutral"
-            variant="link"
-            icon="i-lucide-circle-x"
-            aria-label="Clear input"
-            class="cursor-pointer"
-            @click="search = ''"
-          />
-        </template>
-      </UInput>
+      <!-- Desktop Filters -->
+      <div class="hidden md:flex items-center gap-2 flex-1">
+        <UInput
+          v-model="search"
+          icon="i-lucide-search"
+          placeholder="Search sites..."
+          class="max-w-sm"
+        >
+          <template v-if="search?.length" #trailing>
+            <UButton
+              color="neutral"
+              variant="link"
+              icon="i-lucide-circle-x"
+              aria-label="Clear input"
+              class="cursor-pointer"
+              @click="search = ''"
+            />
+          </template>
+        </UInput>
 
-      <USelect
-        v-model="statusFilter"
-        value-key="id"
-        :items="statusFilterOptions"
-        class="w-40"
-      />
-      <USelectMenu
-        v-model="selectedServers"
-        :items="serverOptions"
-        multiple
-        value-key="value"
-        placeholder="Filter by server"
-        :search-input="false"
-        class="w-48"
-      >
-        <template #leading>
-          <Icon name="lucide:server" class="size-4" />
-        </template>
-      </USelectMenu>
+        <USelect
+          v-model="statusFilter"
+          value-key="id"
+          :items="statusFilterOptions"
+          class="w-40"
+        />
+        <USelectMenu
+          v-model="selectedServers"
+          :items="serverOptions"
+          multiple
+          value-key="value"
+          placeholder="Filter by server"
+          :search-input="false"
+          class="w-48"
+        >
+          <template #leading>
+            <Icon name="lucide:server" class="size-4" />
+          </template>
+        </USelectMenu>
+        <UCheckbox
+            v-model="showDevSites"
+            label="Dev-sites"
+            class="ml-2"
+        />
+      </div>
+
+      <!-- Mobile Filters -->
+      <div class="flex md:hidden items-center gap-2 w-full">
+        <UDrawer v-model:open="isFilterDrawerOpen" title="Filters">
+          <UButton
+            icon="i-lucide-filter"
+            color="neutral"
+            variant="outline"
+            label="Filter"
+            class="flex-1"
+            :badge="activeFilterCount > 0 ? activeFilterCount : undefined"
+          />
+
+          <template #body>
+            <div class="flex flex-col gap-6 p-4">
+              <UFormField label="Search">
+                <UInput
+                  v-model="search"
+                  icon="i-lucide-search"
+                  placeholder="Search sites..."
+                  class="w-full"
+                  size="xl"
+                >
+                  <template v-if="search?.length" #trailing>
+                    <UButton
+                      color="neutral"
+                      variant="link"
+                      icon="i-lucide-circle-x"
+                      class="cursor-pointer"
+                      @click="search = ''"
+                    />
+                  </template>
+                </UInput>
+              </UFormField>
+
+              <UFormField label="Status">
+                <USelect
+                  v-model="statusFilter"
+                  value-key="id"
+                  :items="statusFilterOptions"
+                  class="w-full"
+                  size="xl"
+                />
+              </UFormField>
+
+              <UFormField label="Servers">
+                <USelectMenu
+                  v-model="selectedServers"
+                  :items="serverOptions"
+                  multiple
+                  value-key="value"
+                  placeholder="Filter by server"
+                  :search-input="false"
+                  class="w-full"
+                  size="xl"
+                >
+                  <template #leading>
+                    <Icon name="lucide:server" class="size-4" />
+                  </template>
+                </USelectMenu>
+              </UFormField>
+
+              <UCheckbox
+                  v-model="showDevSites"
+                  label="Dev-sites"
+                  size="lg"
+              />
+            </div>
+          </template>
+
+          <template #footer>
+            <div class="flex flex-col gap-2 w-full">
+              <UButton
+                :disabled="activeFilterCount === 0"
+                label="Clear filters"
+                color="neutral"
+                variant="subtle"
+                block
+                @click="clearFilters"
+              />
+              <UButton
+                label="Close"
+                color="neutral"
+                variant="outline"
+                block
+                @click="isFilterDrawerOpen = false"
+              />
+            </div>
+          </template>
+        </UDrawer>
+      </div>
     </div>
 
     <UTable
@@ -48,8 +147,8 @@
       :columns="columns"
       :loading="sitesStatus === 'pending'"
       :get-row-id="(row) => row.id"
-      sticky
-      class="table-auto flex-1"
+      virtualize
+      class="flex-1"
     >
       <template #siteTitle-cell="{ row }">
         <div class="flex flex-col">
@@ -70,12 +169,17 @@
 
       <template #monitoringStatus-cell="{ row }">
         <div class="flex flex-col">
-          <UBadge
-            :color="row.original.monitoringStatus === 'DOWN' ? 'error' : (row.original.monitoringStatus === 'UP' ? 'success' : 'neutral')"
-            variant="subtle"
-          >
-            {{ row.original.monitoringStatus === 'DOWN' ? 'Down' : (row.original.monitoringStatus === 'UP' ? 'Up' : 'Unknown') }}
-          </UBadge>
+          <div class="flex items-center gap-2">
+            <UBadge
+              :color="row.original.monitoringStatus === 'DOWN' ? 'error' : (row.original.monitoringStatus === 'UP' ? 'success' : 'neutral')"
+              variant="subtle"
+            >
+              {{ row.original.monitoringStatus === 'DOWN' ? 'Down' : (row.original.monitoringStatus === 'UP' ? 'Up' : 'Unknown') }}
+            </UBadge>
+            <UBadge v-if="isDevSite(row.original.siteUrl)" color="warning" variant="soft" size="sm">
+              DEV
+            </UBadge>
+          </div>
           <UBadge
             :color="row.original.monitoringLevel === 'HIGH' ? 'error' : (row.original.monitoringLevel === 'NORMAL' ? 'primary' : 'neutral')"
             variant="soft"
@@ -286,6 +390,7 @@ const { data: sites, status: sitesStatus, refetch: refetchSites } = useQuery<Mon
   queryKey: ['monitoring-sites'],
   queryFn: () => useApiClient()('/monitoring/sites/list'),
 })
+const { data: setupSettings } = useSetupSettingsQuery()
 
 const monitoringLevelOptions = [
   { label: 'High priority', id: 'HIGH' as MonitoringLevel, color: 'error' as const },
@@ -304,6 +409,30 @@ const sorting = ref([{ id: 'siteTitle', desc: false }])
 const expanded = ref<Record<string, boolean>>({})
 const search = ref('')
 const statusFilter = ref<'ALL' | MonitoringStatus>('ALL')
+const showDevSites = ref(true)
+const isFilterDrawerOpen = ref(false)
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (search.value.trim()) count++
+  if (statusFilter.value !== 'ALL') count++
+  if (selectedServers.value.length < serverOptions.value.length) count++
+  if (!showDevSites.value) count++
+  return count
+})
+
+const clearFilters = () => {
+  search.value = ''
+  statusFilter.value = 'ALL'
+  selectedServers.value = serverOptions.value.map(o => o.value)
+  showDevSites.value = true
+}
+
+const isDevSite = (siteUrl: string) => {
+  if (!setupSettings.value?.developmentSites) return false
+  const patterns = setupSettings.value.developmentSites.split(/\s+/).filter(Boolean)
+  return patterns.some(p => siteUrl.toLowerCase().includes(p.toLowerCase()))
+}
 
 // Server filter - extract unique servers from sites
 const serverOptions = computed(() => {
@@ -347,6 +476,10 @@ const filteredSites = computed(() => {
       site.siteUrl.toLowerCase().includes(query) ||
       site.server.name.toLowerCase().includes(query)
     )
+  }
+
+  if (!showDevSites.value) {
+    result = result.filter(site => !isDevSite(site.siteUrl))
   }
 
   return result

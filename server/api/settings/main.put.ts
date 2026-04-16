@@ -6,7 +6,8 @@ const bodySchema = z.object({
   features: z.object({
     wpMailSmtpPro: z.boolean(),
     wpRocketCache: z.boolean()
-  })
+  }),
+  developmentSites: z.string().optional().default('')
 })
 
 export default defineEventHandler(async (event) => {

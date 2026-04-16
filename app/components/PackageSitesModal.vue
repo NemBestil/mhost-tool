@@ -68,7 +68,7 @@
               :data="filteredSites"
               :columns="siteColumns"
               class="max-h-[60vh]"
-              sticky
+              virtualize
             >
               <template #selected-header>
                 <UCheckbox

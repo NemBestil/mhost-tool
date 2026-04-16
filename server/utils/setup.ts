@@ -42,6 +42,7 @@ export type SetupSettings = {
     wpMailSmtpPro: boolean
     wpRocketCache: boolean
   }
+  developmentSites: string
 }
 
 export type WpMailSmtpProMailer = typeof WP_MAIL_SMTP_PRO_MAILERS[number]
@@ -97,7 +98,8 @@ export function getDefaultSetupSettings(): SetupSettings {
     features: {
       wpMailSmtpPro: false,
       wpRocketCache: false
-    }
+    },
+    developmentSites: ''
   }
 }
 
@@ -111,7 +113,8 @@ export function normalizeSetupSettings(settings: Partial<SetupSettings> | null |
     features: {
       wpMailSmtpPro: Boolean(settings?.features?.wpMailSmtpPro),
       wpRocketCache: Boolean(settings?.features?.wpRocketCache)
-    }
+    },
+    developmentSites: String(settings?.developmentSites || '').trim()
   }
 }
 

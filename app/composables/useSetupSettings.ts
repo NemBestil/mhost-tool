@@ -5,6 +5,7 @@ export type SetupSettingsResponse = {
     wpMailSmtpPro: boolean
     wpRocketCache: boolean
   }
+  developmentSites: string
 }
 
 export function useSetupSettingsQuery() {

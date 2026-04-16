@@ -10,58 +10,162 @@
     </template>
 
     <div class="flex items-center gap-2 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800">
-      <UInput
-          v-model="search"
-          icon="i-lucide-search"
-          placeholder="Search sites..."
-          class="max-w-sm"
-      >
-        <template v-if="search?.length" #trailing>
+      <!-- Desktop filters -->
+      <div class="hidden md:flex items-center gap-2 flex-1">
+        <UInput
+            v-model="search"
+            icon="i-lucide-search"
+            placeholder="Search sites..."
+            class="max-w-sm"
+        >
+          <template v-if="search?.length" #trailing>
+            <UButton
+                color="neutral"
+                variant="link"
+                icon="i-lucide-circle-x"
+                aria-label="Clear input"
+                class="cursor-pointer"
+                @click="search = ''"
+            />
+          </template>
+        </UInput>
+        <USelectMenu
+            v-model="selectedServer"
+            :items="serverOptions"
+            value-attribute="value"
+            placeholder="Filter by server"
+            class="w-48"
+            clear
+        >
+          <template #leading>
+            <Icon name="lucide:server" class="size-4" />
+          </template>
+        </USelectMenu>
+        <USelectMenu
+            v-model="selectedHostingStatus"
+            :items="hostingStatusOptions"
+            value-attribute="value"
+            placeholder="Filter by status"
+            class="w-48"
+            clear
+        >
+          <template #leading>
+            <Icon name="lucide:signal" class="size-4" />
+          </template>
+        </USelectMenu>
+        <UCheckbox
+            v-model="showDevSites"
+            label="Dev-sites"
+            class="ml-2"
+        />
+      </div>
+
+      <!-- Mobile filters -->
+      <div class="flex md:hidden items-center gap-2 w-full">
+        <UDrawer v-model:open="isFilterDrawerOpen" title="Filters">
           <UButton
+              icon="i-lucide-filter"
               color="neutral"
-              variant="link"
-              icon="i-lucide-circle-x"
-              aria-label="Clear input"
-              class="cursor-pointer"
-              @click="search = ''"
+              variant="outline"
+              label="Filter"
+              class="flex-1"
+              :badge="activeFilterCount > 0 ? activeFilterCount : undefined"
           />
-        </template>
-      </UInput>
-      <USelectMenu
-          v-model="selectedServer"
-          :items="serverOptions"
-          value-attribute="value"
-          placeholder="Filter by server"
-          class="w-48"
-          clear
-      >
-        <template #leading>
-          <Icon name="lucide:server" class="size-4" />
-        </template>
-      </USelectMenu>
-      <USelectMenu
-          v-model="selectedHostingStatus"
-          :items="hostingStatusOptions"
-          value-attribute="value"
-          placeholder="Filter by status"
-          class="w-48"
-          clear
-      >
-        <template #leading>
-          <Icon name="lucide:signal" class="size-4" />
-        </template>
-      </USelectMenu>
+
+          <template #body>
+            <div class="flex flex-col gap-6 p-4">
+              <UFormField label="Search">
+                <UInput
+                    v-model="search"
+                    icon="i-lucide-search"
+                    placeholder="Search sites..."
+                    class="w-full"
+                    size="xl"
+                >
+                  <template v-if="search?.length" #trailing>
+                    <UButton
+                        color="neutral"
+                        variant="link"
+                        icon="i-lucide-circle-x"
+                        class="cursor-pointer"
+                        @click="search = ''"
+                    />
+                  </template>
+                </UInput>
+              </UFormField>
+
+              <UFormField label="Server">
+                <USelectMenu
+                    v-model="selectedServer"
+                    :items="serverOptions"
+                    value-attribute="value"
+                    placeholder="All servers"
+                    class="w-full"
+                    size="xl"
+                    clear
+                >
+                  <template #leading>
+                    <Icon name="lucide:server" class="size-4" />
+                  </template>
+                </USelectMenu>
+              </UFormField>
+
+              <UFormField label="Status">
+                <USelectMenu
+                    v-model="selectedHostingStatus"
+                    :items="hostingStatusOptions"
+                    value-attribute="value"
+                    placeholder="All statuses"
+                    class="w-full"
+                    size="xl"
+                    clear
+                >
+                  <template #leading>
+                    <Icon name="lucide:signal" class="size-4" />
+                  </template>
+                </USelectMenu>
+              </UFormField>
+
+              <UCheckbox
+                  v-model="showDevSites"
+                  label="Dev-sites"
+                  size="lg"
+              />
+            </div>
+          </template>
+
+          <template #footer>
+            <div class="flex flex-col gap-2 w-full">
+              <UButton
+                  :disabled="activeFilterCount === 0"
+                  label="Clear filters"
+                  color="neutral"
+                  variant="subtle"
+                  block
+                  @click="clearFilters"
+              />
+              <UButton
+                  label="Close"
+                  color="neutral"
+                  variant="outline"
+                  block
+                  @click="isFilterDrawerOpen = false"
+              />
+            </div>
+          </template>
+        </UDrawer>
+      </div>
     </div>
 
     <UTable
         ref="table"
-        sticky
+        virtualize
         v-model:sorting="sorting"
         :data="filteredSites"
         :columns="columns"
         :loading="status === 'pending'"
         :get-row-id="(row) => row.id"
-        class="table-auto flex-1"
+        class="flex-1"
     >
       <!-- Site Title Column -->
       <template #siteTitle-cell="{ row }">
@@ -82,15 +186,20 @@
 
       <!-- Status Column -->
       <template #status-cell="{ row }">
-        <UTooltip :text="getHostingStatusLabel(row.original.hostingStatus)">
-          <UBadge
-              :color="getHostingStatusColor(row.original.hostingStatus)"
-              variant="subtle"
-              class="text-base px-1"
-          >
-            <Icon :name="getHostingStatusIcon(row.original.hostingStatus)" class="size-4" />
+        <div class="flex items-center gap-1">
+          <UTooltip :text="getHostingStatusLabel(row.original.hostingStatus)">
+            <UBadge
+                :color="getHostingStatusColor(row.original.hostingStatus)"
+                variant="subtle"
+                class="text-base px-1"
+            >
+              <Icon :name="getHostingStatusIcon(row.original.hostingStatus)" class="size-4" />
+            </UBadge>
+          </UTooltip>
+          <UBadge v-if="isDevSite(row.original.siteUrl)" color="warning" variant="soft" size="sm">
+            DEV
           </UBadge>
-        </UTooltip>
+        </div>
       </template>
 
       <!-- CVE Column -->
@@ -222,6 +331,7 @@ const {data: servers} = useQuery<ServerList>({
   queryKey: ['servers-list'],
   queryFn: () => useApiClient()('/servers/list')
 })
+const { data: setupSettings } = useSetupSettingsQuery()
 
 const table = useTemplateRef('table')
 const search = ref('')
@@ -230,6 +340,30 @@ const sorting = ref([{id: 'siteTitle', desc: false}])
 
 const selectedServer = ref<{ label: string, value: string } | null>(null)
 const selectedHostingStatus = ref<{ label: string, value: string } | null>(null)
+const showDevSites = ref(true)
+const isFilterDrawerOpen = ref(false)
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (search.value) count++
+  if (selectedServer.value) count++
+  if (selectedHostingStatus.value) count++
+  if (!showDevSites.value) count++
+  return count
+})
+
+const clearFilters = () => {
+  search.value = ''
+  selectedServer.value = null
+  selectedHostingStatus.value = null
+  showDevSites.value = true
+}
+
+const isDevSite = (siteUrl: string) => {
+  if (!setupSettings.value?.developmentSites) return false
+  const patterns = setupSettings.value.developmentSites.split(/\s+/).filter(Boolean)
+  return patterns.some(p => siteUrl.toLowerCase().includes(p.toLowerCase()))
+}
 const hostingStatusOptions = [
   { label: 'Public', value: 'PUBLIC' },
   { label: 'Private', value: 'PRIVATE' },
@@ -261,6 +395,10 @@ const filteredSites = computed(() => {
         s.siteTitle.toLowerCase().includes(q) ||
         s.siteUrl.toLowerCase().includes(q)
     )
+  }
+
+  if (!showDevSites.value) {
+    result = result.filter(s => !isDevSite(s.siteUrl))
   }
 
   return result

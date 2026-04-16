@@ -93,6 +93,36 @@
               </div>
             </div>
           </UCard>
+
+          <UCard class="xl:col-span-2">
+            <template #header>
+              <h3 class="font-medium">Development sites</h3>
+            </template>
+
+            <div class="space-y-4">
+              <UFormField
+                label="Partial domains"
+                description="Enter one or more partial domains (space-separated) to identify development sites. e.g. .moonstarweb.dk .s2.nembestil.dk"
+              >
+                <UInput
+                  v-model="form.developmentSites"
+                  placeholder=".dev.local .staging.example.com"
+                  class="w-full"
+                  :disabled="isSaving"
+                />
+              </UFormField>
+
+              <div class="flex justify-end">
+                <UButton
+                  label="Save settings"
+                  icon="i-lucide-save"
+                  :loading="isSaving"
+                  :disabled="!hasChanges"
+                  @click="saveSettings"
+                />
+              </div>
+            </div>
+          </UCard>
         </div>
       </div>
     </div>
@@ -112,7 +142,8 @@ const form = reactive({
   features: {
     wpMailSmtpPro: false,
     wpRocketCache: false
-  }
+  },
+  developmentSites: ''
 })
 
 const isSaving = ref(false)
@@ -124,11 +155,13 @@ watch(data, (value) => {
 
   form.features.wpMailSmtpPro = value.features.wpMailSmtpPro
   form.features.wpRocketCache = value.features.wpRocketCache
+  form.developmentSites = value.developmentSites || ''
 }, { immediate: true })
 
 const hasChanges = computed(() => {
   return form.features.wpMailSmtpPro !== Boolean(data.value?.features.wpMailSmtpPro)
     || form.features.wpRocketCache !== Boolean(data.value?.features.wpRocketCache)
+    || form.developmentSites !== (data.value?.developmentSites || '')
 })
 
 const pages = computed(() => [
@@ -156,7 +189,8 @@ const saveSettings = async () => {
         features: {
           wpMailSmtpPro: form.features.wpMailSmtpPro,
           wpRocketCache: form.features.wpRocketCache
-        }
+        },
+        developmentSites: form.developmentSites
       }
     })
 
