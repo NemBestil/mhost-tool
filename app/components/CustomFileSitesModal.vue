@@ -34,7 +34,7 @@
           <UTable
             :data="filteredSites"
             :columns="siteColumns"
-            class="max-h-[60vh]"
+            class="h-[60vh]"
             virtualize
           >
             <template #selected-header>

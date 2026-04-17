@@ -605,7 +605,7 @@
               :data="versions"
               :columns="versionColumns"
               virtualize
-              class="max-h-[60vh]"
+              class="h-[60vh]"
           >
             <template #selected-header>
               <UCheckbox
