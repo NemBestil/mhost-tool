@@ -20,13 +20,32 @@
     <div class="flex-1 flex flex-col min-h-0">
       <CustomFileJobActivity />
 
-      <div class="flex items-center gap-3 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800">
+      <div class="flex items-center justify-between gap-3 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex-wrap">
         <UInput
           v-model="search"
           icon="i-lucide-search"
           placeholder="Search files..."
-          class="max-w-sm"
+          class="max-w-sm flex-1"
         />
+        <div class="flex items-center gap-2">
+          <UButton
+            icon="i-lucide-upload"
+            label="Upload"
+            color="primary"
+            :variant="selectedIds.length === 0 ? 'outline' : 'solid'"
+            :disabled="selectedIds.length === 0"
+            @click="openSelectedSitesModal"
+          />
+          <UButton
+            icon="i-lucide-trash"
+            label="Delete"
+            color="error"
+            :variant="selectedIds.length === 0 ? 'outline' : 'solid'"
+            :disabled="selectedIds.length === 0"
+            :loading="isDeletingBatch"
+            @click="deleteSelectedFiles"
+          />
+        </div>
       </div>
 
       <UTable
@@ -36,6 +55,19 @@
         sticky
         class="flex-1"
       >
+        <template #selected-header>
+          <UCheckbox
+            :model-value="allFilesSelected"
+            @update:model-value="toggleAllRows"
+          />
+        </template>
+
+        <template #selected-cell="{ row }">
+          <UCheckbox
+            :model-value="selectedIds.includes(row.original.id)"
+            @update:model-value="(value) => toggleRow(row.original.id, Boolean(value))"
+          />
+        </template>
         <template #relativePath-cell="{ row }">
           <div class="min-w-0 w-full space-y-1">
             <div class="flex items-center gap-2 min-w-0 w-full">
@@ -79,24 +111,6 @@
           </span>
         </template>
 
-        <template #actions-cell="{ row }">
-          <div class="flex items-center justify-end gap-2">
-            <UButton
-              icon="i-lucide-upload"
-              label="Upload"
-              color="primary"
-              variant="outline"
-              @click="openSitesModal(row.original)"
-            />
-            <UButton
-              icon="i-lucide-trash"
-              color="error"
-              variant="ghost"
-              :loading="deletingIds.has(row.original.id)"
-              @click="deleteFile(row.original)"
-            />
-          </div>
-        </template>
       </UTable>
 
       <div
@@ -109,7 +123,7 @@
 
     <CustomFileSitesModal
       v-model:open="isSitesModalOpen"
-      :file-details="activeFileDetails"
+      :file-ids="selectedIds"
     />
   </NuxtLayout>
 </template>
@@ -142,10 +156,10 @@ const isSubmitting = ref(false)
 const search = ref('')
 const pathDrafts = ref<Record<string, string>>({})
 const updatingPathIds = ref<Set<string>>(new Set())
-const deletingIds = ref<Set<string>>(new Set())
+const selectedIds = ref<string[]>([])
+const isDeletingBatch = ref(false)
 
 const isSitesModalOpen = ref(false)
-const activeFileDetails = ref<Pick<CustomFileRow, 'id' | 'originalFilename' | 'relativePath'> | null>(null)
 
 const { data, isPending, refetch } = useQuery<{ files: CustomFileRow[] }>({
   queryKey: ['custom-files-list'],
@@ -163,7 +177,17 @@ const filteredFiles = computed(() => {
   ))
 })
 
+const allFilesSelected = computed(() => {
+  return filteredFiles.value.length > 0 && filteredFiles.value.every(f => selectedIds.value.includes(f.id))
+})
+
 const columns: TableColumn<CustomFileRow>[] = [
+  {
+    id: 'selected',
+    header: '',
+    size: 0,
+    meta: { class: { td: 'w-2' } }
+  },
   {
     accessorKey: 'relativePath',
     header: 'Relative path',
@@ -176,12 +200,6 @@ const columns: TableColumn<CustomFileRow>[] = [
   {
     accessorKey: 'uploadedAt',
     header: 'Uploaded'
-  },
-  {
-    id: 'actions',
-    header: '',
-    size: 0,
-    meta: { class: { td: 'w-2' } }
   }
 ]
 
@@ -267,12 +285,6 @@ const saveRelativePath = async (file: CustomFileRow) => {
     })
 
     pathDrafts.value[file.id] = response.relativePath
-    if (activeFileDetails.value?.id === file.id) {
-      activeFileDetails.value = {
-        ...activeFileDetails.value,
-        relativePath: response.relativePath
-      }
-    }
 
     await refetch()
   } catch (error: any) {
@@ -288,51 +300,66 @@ const saveRelativePath = async (file: CustomFileRow) => {
   }
 }
 
-const openSitesModal = (file: CustomFileRow) => {
-  activeFileDetails.value = {
-    id: file.id,
-    originalFilename: file.originalFilename,
-    relativePath: file.relativePath
+const toggleAllRows = (value: boolean | 'indeterminate') => {
+  if (value === true) {
+    const next = new Set(selectedIds.value)
+    for (const f of filteredFiles.value) {
+      next.add(f.id)
+    }
+    selectedIds.value = Array.from(next)
+    return
   }
+
+  const next = new Set(selectedIds.value)
+  for (const f of filteredFiles.value) {
+    next.delete(f.id)
+  }
+  selectedIds.value = Array.from(next)
+}
+
+const toggleRow = (id: string, checked: boolean) => {
+  if (checked) {
+    if (!selectedIds.value.includes(id)) {
+      selectedIds.value.push(id)
+    }
+    return
+  }
+
+  selectedIds.value = selectedIds.value.filter(itemId => itemId !== id)
+}
+
+const openSelectedSitesModal = () => {
   isSitesModalOpen.value = true
 }
 
-const deleteFile = async (file: CustomFileRow) => {
-  if (deletingIds.value.has(file.id)) return
+const deleteSelectedFiles = async () => {
+  if (selectedIds.value.length === 0 || isDeletingBatch.value) return
 
-  const confirmed = window.confirm(`Delete "${file.originalFilename}"? This also removes its deployment history.`)
+  const confirmed = window.confirm(`Delete ${selectedIds.value.length} selected file(s)? This also removes their deployment history.`)
   if (!confirmed) return
 
-  deletingIds.value = new Set([...deletingIds.value, file.id])
-
+  isDeletingBatch.value = true
   try {
-    await apiClient(`/custom-files/${file.id}`, {
+    await Promise.all(selectedIds.value.map(id => apiClient(`/custom-files/${id}`, {
       method: 'DELETE'
-    })
+    })))
 
     toast.add({
-      title: 'File deleted',
-      description: `${file.originalFilename} was removed.`,
+      title: 'Files deleted',
+      description: `${selectedIds.value.length} custom file(s) removed.`,
       color: 'success'
     })
 
-    if (activeFileDetails.value?.id === file.id) {
-      isSitesModalOpen.value = false
-      activeFileDetails.value = null
-    }
-
-    delete pathDrafts.value[file.id]
+    selectedIds.value = []
     await refetch()
   } catch (error: any) {
     toast.add({
-      title: 'Failed to delete file',
+      title: 'Failed to delete files',
       description: error?.data?.message || error?.message || 'Unknown error',
       color: 'error'
     })
   } finally {
-    const next = new Set(deletingIds.value)
-    next.delete(file.id)
-    deletingIds.value = next
+    isDeletingBatch.value = false
   }
 }
 

@@ -2,9 +2,9 @@
   <UModal v-model:open="isOpen" :title="modalTitle" :ui="{ content: 'max-w-4xl' }">
     <template #body>
       <div class="space-y-4">
-        <div v-if="fileDetails" class="text-sm text-neutral-500 break-all">
-          Target path:
-          <UBadge color="neutral" variant="outline">{{ fileDetails.relativePath }}</UBadge>
+        <div v-if="props.fileIds.length > 0" class="text-sm text-neutral-500">
+          Target files:
+          <UBadge color="neutral" variant="outline">{{ props.fileIds.length }} selected</UBadge>
         </div>
 
         <div v-if="isLoading" class="flex items-center justify-center py-8">
@@ -83,25 +83,25 @@
             <template #status-cell="{ row }">
               <div :class="{ 'opacity-50': pendingInstallationIds.has(row.original.installationId) }">
                 <UBadge
-                  v-if="row.original.hasFile"
+                  v-if="row.original.presentCount === row.original.totalCount"
                   color="success"
                   variant="subtle"
                 >
-                  Has file
+                  {{ row.original.presentCount }}/{{ row.original.totalCount }}
                 </UBadge>
                 <UBadge
-                  v-else-if="row.original.deployedRelativePath"
+                  v-else-if="row.original.presentCount > 0"
                   color="warning"
                   variant="subtle"
                 >
-                  Path changed
+                  {{ row.original.presentCount }}/{{ row.original.totalCount }}
                 </UBadge>
                 <UBadge
                   v-else
-                  color="neutral"
+                  color="error"
                   variant="subtle"
                 >
-                  Missing
+                  {{ row.original.presentCount }}/{{ row.original.totalCount }}
                 </UBadge>
               </div>
             </template>
@@ -147,13 +147,13 @@ type SiteRow = {
   siteTitle: string
   siteUrl: string
   serverName: string
-  hasFile: boolean
+  presentCount: number
+  totalCount: number
   deployedAt: string | null
-  deployedRelativePath: string | null
 }
 
 const props = defineProps<{
-  fileDetails: FileDetails | null
+  fileIds: string[]
 }>()
 
 const isOpen = defineModel<boolean>('open', { required: true })
@@ -166,11 +166,15 @@ const searchQuery = ref('')
 const pendingInstallationIds = ref<Set<string>>(new Set())
 
 const modalTitle = computed(() => {
-  return props.fileDetails ? `Custom file: ${props.fileDetails.originalFilename}` : ''
+  if (props.fileIds.length === 0) return ''
+  if (props.fileIds.length === 1 && files.value[0]) {
+    return `Custom file: ${files.value[0].originalFilename}`
+  }
+  return `Upload ${props.fileIds.length} custom files`
 })
 
 const queryEnabled = computed(() => {
-  return Boolean(isOpen.value && props.fileDetails?.id)
+  return Boolean(isOpen.value && props.fileIds.length > 0)
 })
 
 const {
@@ -178,14 +182,18 @@ const {
   isPending,
   isFetching,
   refetch: refetchSites
-} = useQuery<{ file: FileDetails, sites: SiteRow[] }>({
-  queryKey: computed(() => ['custom-file-sites', props.fileDetails?.id || null]),
-  queryFn: () => useApiClient()(`/custom-files/${props.fileDetails!.id}/sites`),
+} = useQuery<{ files: FileDetails[], sites: SiteRow[] }>({
+  queryKey: computed(() => ['custom-file-sites', props.fileIds]),
+  queryFn: () => useApiClient()('/custom-files/sites-status', {
+    method: 'POST',
+    body: { fileIds: props.fileIds }
+  }),
   enabled: queryEnabled,
   placeholderData: keepPreviousData
 })
 
 const sites = computed(() => sitesResponse.value?.sites || [])
+const files = computed(() => sitesResponse.value?.files || [])
 const isLoading = computed(() => isPending.value && !sitesResponse.value)
 const filteredSites = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -233,7 +241,7 @@ const siteColumns: TableColumn<SiteRow>[] = [
 ]
 
 const queueUpload = async () => {
-  if (!props.fileDetails || selectedSites.value.length === 0) return
+  if (props.fileIds.length === 0 || selectedSites.value.length === 0) return
 
   const selected = [...selectedSites.value]
 
@@ -244,19 +252,26 @@ const queueUpload = async () => {
   ])
 
   try {
+    const jobs = []
+    for (const site of selected) {
+      for (const fileId of props.fileIds) {
+        jobs.push({
+          installationId: site.installationId,
+          customFileId: fileId
+        })
+      }
+    }
+
     await useApiClient()('/custom-files/jobs', {
       method: 'POST',
       body: {
-        jobs: selected.map(site => ({
-          installationId: site.installationId,
-          customFileId: props.fileDetails!.id
-        }))
+        jobs
       }
     })
 
     toast.add({
       title: 'Uploads queued',
-      description: `${selected.length} upload job(s) added to the queue.`,
+      description: `${jobs.length} upload job(s) added to the queue.`,
       color: 'success'
     })
 
@@ -306,7 +321,7 @@ const reconcilePending = () => {
 
   const next = new Set(pendingInstallationIds.value)
   for (const site of sites.value) {
-    if (site.hasFile) {
+    if (site.presentCount === site.totalCount) {
       next.delete(site.installationId)
     }
   }
@@ -321,12 +336,12 @@ const formatFullDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString()
 }
 
-watch(() => props.fileDetails, (details) => {
+watch(() => props.fileIds, (ids) => {
   selectedInstallationIds.value = []
   searchQuery.value = ''
   pendingInstallationIds.value = new Set()
 
-  if (isOpen.value && details && !isFetching.value) {
+  if (isOpen.value && ids.length > 0 && !isFetching.value) {
     refetchSites()
   }
 }, { immediate: true })
