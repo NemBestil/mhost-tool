@@ -141,6 +141,40 @@ export const useScanStore = defineStore('scan', () => {
     }
   }
 
+  const startSiteScan = async (siteId: string, serverId: string, onComplete?: () => void) => {
+    if (isServerScanning(serverId)) return
+
+    // Ensure WebSocket is connected
+    connectWebSocket()
+
+    // A single-site scan reuses the server-scoped scan events
+    activeScans.value[serverId] = { total: 1, current: 0, success: 0, failed: 0 }
+    completedScans.value.delete(serverId)
+
+    try {
+      await useApiClient()(`/sites/${siteId}/scan`, {
+        method: 'POST'
+      })
+    } catch (e: any) {
+      delete activeScans.value[serverId]
+      addLog('error', `Failed to start site scan: ${e.message}`, serverId)
+      return
+    }
+
+    // Watch for completion if callback provided
+    if (onComplete) {
+      const unwatch = watch(
+        () => completedScans.value.has(serverId),
+        (completed) => {
+          if (completed) {
+            onComplete()
+            unwatch()
+          }
+        }
+      )
+    }
+  }
+
   const clearScan = () => {
     if (isScanning.value) return
     
@@ -166,6 +200,7 @@ export const useScanStore = defineStore('scan', () => {
     wsConnected,
     isServerScanning,
     startScan,
+    startSiteScan,
     clearScan,
     connectWebSocket,
     disconnectWebSocket

@@ -25,112 +25,210 @@
       <UIcon name="i-lucide-loader-2" class="animate-spin size-8 text-neutral-400" />
     </div>
 
-    <div v-else-if="site" class="flex-1 flex flex-col min-h-0 gap-6 pb-4">
-      <UCard :ui="{ body: 'p-4 sm:p-6' }" class="shrink-0">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Site URL</span>
-            <div class="flex items-center gap-2">
-              <a :href="site.siteUrl" target="_blank" class="text-primary hover:underline font-medium">
-                {{ site.siteUrl }}
-              </a>
-              <UIcon name="i-lucide-external-link" class="size-3.5 text-neutral-400" />
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Server</span>
-            <div class="flex items-center gap-2 font-medium">
-              <UIcon name="i-lucide-server" class="size-4 text-neutral-400" />
-              {{ site.server.name }} ({{ site.server.hostname }})
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Admin Email</span>
-            <div class="space-y-1">
-              <div class="flex items-center gap-1.5">
-                <span class="font-medium">{{ site.adminEmail || 'N/A' }}</span>
-                <UButton
-                  icon="i-lucide-pencil"
-                  variant="ghost"
-                  color="neutral"
-                  size="xs"
-                  @click="openAdminEmailModal"
-                />
-              </div>
-              <div v-if="site.adminEmailFromName" class="text-sm text-neutral-500">
-                From: {{ site.adminEmailFromName }}
-              </div>
-            </div>
-          </div>
-
-          <div v-if="site.hasWooCommerce" class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">WooCommerce Email</span>
-            <div class="space-y-1">
-              <div class="flex items-center gap-1.5">
-                <span class="font-medium">{{ site.wooCommerceEmail || 'N/A' }}</span>
-                <UButton
-                  icon="i-lucide-pencil"
-                  variant="ghost"
-                  color="neutral"
-                  size="xs"
-                  @click="openWooCommerceEmailModal"
-                />
-              </div>
-              <div v-if="site.wooCommerceEmailFromName" class="text-sm text-neutral-500">
-                From: {{ site.wooCommerceEmailFromName }}
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Timezone</span>
-            <div class="font-medium">{{ site.timezone || 'N/A' }}</div>
-          </div>
-
-          <div class="space-y-1">
-            <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Last Scanned</span>
-            <div class="font-medium">
-              <span v-if="site.lastScanAt" :title="formatFullDate(site.lastScanAt)">
-                {{ formatRelativeTime(site.lastScanAt) }}
-              </span>
-              <span v-else class="text-neutral-400">Never</span>
-            </div>
-          </div>
-        </div>
-
-        <template #footer>
-          <div class="flex items-center gap-4 text-sm">
-            <div class="flex items-center gap-1.5">
-              <UIcon
-                :name="site.usesServerCron ? 'i-lucide-check-circle' : 'i-lucide-x-circle'"
-                :class="site.usesServerCron ? 'text-success' : 'text-neutral-400'"
-              />
-              <span :class="site.usesServerCron ? 'text-neutral-900 dark:text-neutral-50' : 'text-neutral-500'">Server Cron</span>
-            </div>
-
-            <div v-if="site.currentCve !== null" class="flex items-center gap-1.5">
-              <UBadge :color="getCveColor(site.currentCve)" variant="subtle" class="cursor-pointer" @click="cveModalOpen = true">
-                CVE Score: {{ site.currentCve.toFixed(1) }}
-              </UBadge>
-            </div>
-
-            <div v-if="site.autoLoginUser" class="flex items-center gap-1.5">
-              <UBadge color="primary" variant="subtle">
-                Auto-login: {{ site.autoLoginUser }}
-              </UBadge>
-            </div>
-          </div>
-        </template>
-      </UCard>
-
+    <div v-else-if="site" class="flex-1 flex flex-col min-h-0">
       <UTabs
         v-model="activeTab"
         :items="tabItems"
         class="flex-1 flex flex-col min-h-0"
         :ui="{ content: 'flex-1 flex flex-col min-h-0' }"
       >
+        <template #overview>
+          <div class="flex-1 min-h-0 overflow-y-auto space-y-6 p-2">
+            <UCard :ui="{ body: 'p-4 sm:p-6' }">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="space-y-1">
+                  <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Site URL</span>
+                  <div class="flex items-center gap-2">
+                    <a :href="site.siteUrl" target="_blank" class="text-primary hover:underline font-medium">
+                      {{ site.siteUrl }}
+                    </a>
+                    <UIcon name="i-lucide-external-link" class="size-3.5 text-neutral-400" />
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Server</span>
+                  <div class="flex items-center gap-2 font-medium">
+                    <UIcon name="i-lucide-server" class="size-4 text-neutral-400" />
+                    {{ site.server.name }} ({{ site.server.hostname }})
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Admin Email</span>
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-medium">{{ site.adminEmail || 'N/A' }}</span>
+                      <UButton
+                        icon="i-lucide-pencil"
+                        variant="ghost"
+                        color="neutral"
+                        size="xs"
+                        @click="openAdminEmailModal"
+                      />
+                    </div>
+                    <div v-if="site.adminEmailFromName" class="text-sm text-neutral-500">
+                      From: {{ decodeEntities(site.adminEmailFromName) }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="site.hasWooCommerce" class="space-y-1">
+                  <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">WooCommerce Email</span>
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-medium">{{ site.wooCommerceEmail || 'N/A' }}</span>
+                      <UButton
+                        icon="i-lucide-pencil"
+                        variant="ghost"
+                        color="neutral"
+                        size="xs"
+                        @click="openWooCommerceEmailModal"
+                      />
+                    </div>
+                    <div v-if="site.wooCommerceEmailFromName" class="text-sm text-neutral-500">
+                      From: {{ decodeEntities(site.wooCommerceEmailFromName) }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Timezone</span>
+                  <div class="font-medium">{{ site.timezone || 'N/A' }}</div>
+                </div>
+
+                <div class="space-y-1">
+                  <span class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Last Scanned</span>
+                  <div class="flex items-center gap-2 font-medium">
+                    <span v-if="site.lastScanAt" :title="formatFullDate(site.lastScanAt)">
+                      {{ formatRelativeTime(site.lastScanAt) }}
+                    </span>
+                    <span v-else class="text-neutral-400">Never</span>
+                    <UButton
+                      icon="i-lucide-refresh-cw"
+                      variant="ghost"
+                      color="neutral"
+                      size="xs"
+                      :loading="isScanningSite"
+                      :disabled="isScanningSite"
+                      title="Re-scan this site now"
+                      @click="rescanSite"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <template #footer>
+                <div class="flex items-center gap-4 text-sm">
+                  <div class="flex items-center gap-1.5">
+                    <UIcon
+                      :name="site.usesServerCron ? 'i-lucide-check-circle' : 'i-lucide-x-circle'"
+                      :class="site.usesServerCron ? 'text-success' : 'text-neutral-400'"
+                    />
+                    <span :class="site.usesServerCron ? 'text-neutral-900 dark:text-neutral-50' : 'text-neutral-500'">Server Cron</span>
+                  </div>
+
+                  <div v-if="site.currentCve !== null" class="flex items-center gap-1.5">
+                    <UBadge :color="getCveColor(site.currentCve)" variant="subtle" class="cursor-pointer" @click="cveModalOpen = true">
+                      CVE Score: {{ site.currentCve.toFixed(1) }}
+                    </UBadge>
+                  </div>
+
+                  <div v-if="site.autoLoginUser" class="flex items-center gap-1.5">
+                    <UBadge color="primary" variant="subtle">
+                      Auto-login: {{ site.autoLoginUser }}
+                    </UBadge>
+                  </div>
+                </div>
+              </template>
+            </UCard>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <UCard :ui="{ body: 'p-4' }">
+                <div class="flex items-center gap-2 text-neutral-500">
+                  <UIcon name="i-lucide-plug" class="size-4" />
+                  <span class="text-sm font-medium uppercase tracking-wider">Plugins</span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span class="text-2xl font-semibold">{{ pluginStats.total }}</span>
+                  <span class="text-sm text-neutral-500">installed</span>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <span class="text-neutral-500">{{ pluginStats.active }} active</span>
+                  <UBadge :color="pluginStats.outdated ? 'warning' : 'neutral'" variant="subtle">
+                    {{ pluginStats.outdated }} outdated
+                  </UBadge>
+                  <UBadge
+                    v-if="pluginStats.highestCve !== null"
+                    :color="getCveColor(pluginStats.highestCve)"
+                    variant="subtle"
+                  >
+                    Top CVE {{ pluginStats.highestCve.toFixed(1) }}
+                  </UBadge>
+                </div>
+              </UCard>
+
+              <UCard :ui="{ body: 'p-4' }">
+                <div class="flex items-center gap-2 text-neutral-500">
+                  <UIcon name="i-lucide-palette" class="size-4" />
+                  <span class="text-sm font-medium uppercase tracking-wider">Themes</span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span class="text-2xl font-semibold">{{ themeStats.total }}</span>
+                  <span class="text-sm text-neutral-500">installed</span>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <span class="text-neutral-500">{{ themeStats.active }} active</span>
+                  <UBadge :color="themeStats.outdated ? 'warning' : 'neutral'" variant="subtle">
+                    {{ themeStats.outdated }} outdated
+                  </UBadge>
+                  <UBadge
+                    v-if="themeStats.highestCve !== null"
+                    :color="getCveColor(themeStats.highestCve)"
+                    variant="subtle"
+                  >
+                    Top CVE {{ themeStats.highestCve.toFixed(1) }}
+                  </UBadge>
+                </div>
+              </UCard>
+
+              <UCard :ui="{ body: 'p-4' }">
+                <div class="flex items-center gap-2 text-neutral-500">
+                  <UIcon name="i-lucide-users" class="size-4" />
+                  <span class="text-sm font-medium uppercase tracking-wider">Users</span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span class="text-2xl font-semibold">{{ userStats.total }}</span>
+                  <span class="text-sm text-neutral-500">total</span>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <span class="text-neutral-500">{{ userStats.roles }} role{{ userStats.roles === 1 ? '' : 's' }}</span>
+                </div>
+              </UCard>
+            </div>
+
+            <div class="space-y-4">
+              <SiteToolsWpRocketCacheTool :site-id="siteId" :plugins="site.plugins" />
+
+              <div class="border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-neutral-900 dark:text-neutral-50">Log in to WordPress</h3>
+                    <p class="text-sm text-neutral-500 mt-1">
+                      Generate a secure one-time login link for the auto-login user.
+                    </p>
+                  </div>
+                  <UButton
+                    icon="i-lucide-log-in"
+                    :to="`/sites/${siteId}/wp-login`"
+                    target="_blank"
+                    label="Log in"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
         <template #plugins>
           <div class="flex-1 flex flex-col min-h-0 mt-4">
             <UTable :data="site.plugins" :columns="pluginColumns" sticky class="flex-1 overflow-auto">
@@ -394,29 +492,6 @@
             </div>
           </div>
         </template>
-
-        <template #tools>
-          <div class="flex-1 flex flex-col min-h-0 mt-4 gap-4">
-            <SiteToolsWpRocketCacheTool :site-id="siteId" :plugins="site.plugins" />
-
-            <div class="border border-neutral-200 dark:border-neutral-800 rounded-lg p-4">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex-1">
-                  <h3 class="font-semibold text-neutral-900 dark:text-neutral-50">Log in to WordPress</h3>
-                  <p class="text-sm text-neutral-500 mt-1">
-                    Generate a secure one-time login link for the auto-login user.
-                  </p>
-                </div>
-                <UButton
-                  icon="i-lucide-log-in"
-                  :to="`/sites/${siteId}/wp-login`"
-                  target="_blank"
-                  label="Log in"
-                />
-              </div>
-            </div>
-          </div>
-        </template>
       </UTabs>
     </div>
 
@@ -579,7 +654,7 @@ const toast = useToast()
 const queryClient = useQueryClient()
 const packageJobStore = usePackageJobStore()
 
-const tabValues = ['plugins', 'themes', 'users', 'tools'] as const
+const tabValues = ['overview', 'plugins', 'themes', 'users'] as const
 type SiteTab = typeof tabValues[number]
 
 const { data: site, status } = useQuery<SiteDetails>({
@@ -587,11 +662,36 @@ const { data: site, status } = useQuery<SiteDetails>({
   queryFn: () => useApiClient()(`/sites/${siteId}`)
 })
 
+const scanStore = useScanStore()
+
+const isScanningSite = computed(() =>
+  site.value ? scanStore.isServerScanning(site.value.serverId) : false
+)
+
+const rescanSite = () => {
+  if (!site.value) return
+
+  scanStore.startSiteScan(siteId, site.value.serverId, () => {
+    void queryClient.invalidateQueries({ queryKey: ['site', siteId] })
+    toast.add({
+      title: 'Site scan complete',
+      description: 'The site has been re-scanned.',
+      color: 'success'
+    })
+  })
+}
+
 definePageMeta({
   title: 'Site Details'
 })
 
 const tabItems = [
+  {
+    label: 'Overview',
+    icon: 'i-lucide-layout-dashboard',
+    value: 'overview',
+    slot: 'overview'
+  },
   {
     label: 'Plugins',
     icon: 'i-lucide-plug',
@@ -609,19 +709,13 @@ const tabItems = [
     icon: 'i-lucide-users',
     value: 'users',
     slot: 'users'
-  },
-  {
-    label: 'Tools',
-    icon: 'i-lucide-wrench',
-    value: 'tools',
-    slot: 'tools'
   }
 ]
 
 const getRouteTab = (value: unknown): SiteTab => {
   return typeof value === 'string' && tabValues.includes(value as SiteTab)
     ? value as SiteTab
-    : 'plugins'
+    : 'overview'
 }
 
 const activeTab = ref<SiteTab>(getRouteTab(route.query.tab))
@@ -786,6 +880,36 @@ const userPagination = computed(() => siteUsers.value?.pagination ?? {
   total: 0,
   totalPages: 1
 })
+
+type PackageStatItem = {
+  version?: string | null
+  latestVersion?: string | null
+  isEnabled?: boolean
+  cveScore?: number | null
+}
+
+const isItemOutdated = (item: PackageStatItem) =>
+  Boolean(item.latestVersion && item.latestVersion !== item.version)
+
+const buildPackageStats = (items: PackageStatItem[]) => {
+  const cveScores = items
+    .map(item => item.cveScore)
+    .filter((score): score is number => score != null)
+
+  return {
+    total: items.length,
+    active: items.filter(item => item.isEnabled).length,
+    outdated: items.filter(isItemOutdated).length,
+    highestCve: cveScores.length ? Math.max(...cveScores) : null
+  }
+}
+
+const pluginStats = computed(() => buildPackageStats(site.value?.plugins ?? []))
+const themeStats = computed(() => buildPackageStats(site.value?.themes ?? []))
+const userStats = computed(() => ({
+  total: userPagination.value.total,
+  roles: siteUsers.value?.roles?.length ?? 0
+}))
 
 watch(selectedRole, () => {
   usersPage.value = 1

@@ -569,6 +569,12 @@ const startScan = (serverId: string) => {
   })
 }
 
+const startSiteScan = (row: Site) => {
+  scanStore.startSiteScan(row.id, row.serverId, () => {
+    void refetchSites()
+  })
+}
+
 const formatRelativeTime = (dateStr: string) => {
   return formatDistanceToNow(new Date(dateStr), {addSuffix: true})
 }
@@ -630,6 +636,12 @@ const getActionItems = (row: Site) => [
       label: 'View Details',
       icon: 'lucide:eye',
       to: `/sites/${row.id}`
+    },
+    {
+      label: 'Scan now',
+      icon: 'lucide:refresh-cw',
+      disabled: scanStore.isServerScanning(row.serverId),
+      onSelect: () => startSiteScan(row)
     }
   ],
   [
