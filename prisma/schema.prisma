@@ -85,6 +85,7 @@ model WordPressInstallation {
   wooCommerceEmailFromName     String?
   phpVersion                   String?
   phpMemoryLimit               String?
+  wordpressVersion             String?
   lastScanAt                   DateTime?
   monitoringLevel              MonitoringLevel   @default(NONE)
   monitoringStatus             MonitoringStatus  @default(UNKNOWN)

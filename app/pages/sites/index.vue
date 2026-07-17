@@ -205,6 +205,12 @@
               <Icon :name="isDevSite(row.original.siteUrl) ? 'lucide:flask-conical' : 'lucide:flask-conical-off'" class="size-4" />
             </UBadge>
           </UTooltip>
+          <UBadge
+              v-if="row.original.wordpressVersion"
+              color="neutral"
+              variant="subtle"
+              :label="row.original.wordpressVersion"
+          />
         </div>
       </template>
 
@@ -331,6 +337,7 @@ definePageMeta({
 })
 
 const scanStore = useScanStore()
+const packageJobStore = usePackageJobStore()
 const toast = useToast()
 type SiteList = TypedInternalResponse<'/api/sites/list', unknown, 'get'>
 type ServerList = TypedInternalResponse<'/api/servers/list', unknown, 'get'>
@@ -456,6 +463,13 @@ const handleDeleteModalOpenAutoFocus = (event: Event) => {
 const batchActionItems = computed(() => [
   [
     {
+      label: 'Update WordPress',
+      icon: 'lucide:circle-arrow-up',
+      onSelect: () => queueWordPressUpdates(getSelectedSiteIds())
+    }
+  ],
+  [
+    {
       label: 'Delete',
       icon: 'lucide:trash',
       color: 'error' as const,
@@ -466,6 +480,41 @@ const batchActionItems = computed(() => [
     }
   ]
 ])
+
+const queueWordPressUpdates = async (siteIds: string[]) => {
+  const uniqueSiteIds = [...new Set(siteIds.filter(Boolean))]
+  if (uniqueSiteIds.length === 0) return
+
+  try {
+    await useApiClient()('/packages/jobs', {
+      method: 'POST',
+      body: {
+        jobs: uniqueSiteIds.map(installationId => ({
+          installationId,
+          kind: 'core',
+          slug: 'wordpress',
+          operation: 'update'
+        }))
+      }
+    })
+
+    toast.add({
+      title: 'WordPress updates queued',
+      description: `${uniqueSiteIds.length} site update(s) added to the queue.`,
+      color: 'success',
+      icon: 'i-lucide-circle-arrow-up'
+    })
+
+    await packageJobStore.refreshStatus()
+  } catch (error: any) {
+    toast.add({
+      title: 'Failed to queue WordPress updates',
+      description: error?.data?.message || error?.message || 'Unknown error',
+      color: 'error',
+      icon: 'i-lucide-alert-circle'
+    })
+  }
+}
 
 const confirmDelete = async () => {
   const siteIds = siteIdsToDelete.value
@@ -663,6 +712,11 @@ const getActionItems = (row: Site) => [
       icon: 'lucide:refresh-cw',
       disabled: scanStore.isServerScanning(row.serverId),
       onSelect: () => startSiteScan(row)
+    },
+    {
+      label: 'Update WordPress',
+      icon: 'lucide:circle-arrow-up',
+      onSelect: () => queueWordPressUpdates([row.id])
     }
   ],
   [
@@ -677,4 +731,10 @@ const getActionItems = (row: Site) => [
     }
   ]
 ]
+
+watch(() => packageJobStore.lastCompletedProgress?.updatedAt, (updatedAt, previous) => {
+  if (updatedAt && updatedAt !== previous) {
+    void refetchSites()
+  }
+})
 </script>

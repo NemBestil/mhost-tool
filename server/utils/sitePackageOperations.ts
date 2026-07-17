@@ -6,6 +6,7 @@ import { execSshCommandByServerId, uploadFileToServerByServerId } from '#server/
 import { detectPhpBinary } from '#server/utils/phpBinary'
 
 export type SitePackageKind = 'plugin' | 'theme'
+export type SiteJobKind = SitePackageKind | 'core'
 export type SitePackageOperation = 'update' | 'install' | 'install-activate' | 'activate' | 'deactivate' | 'delete'
 export type PackageSource = 'wordpress.org' | 'external'
 
@@ -97,6 +98,60 @@ export async function executeSitePackageOperation(input: SitePackageOperationInp
   }
 
   return await handleDelete(installation, input.kind, input.slug)
+}
+
+export async function executeWordPressCoreUpdate(installationId: string): Promise<SitePackageOperationResult> {
+  const installation = await prisma.wordPressInstallation.findUnique({
+    where: { id: installationId },
+    select: {
+      id: true,
+      serverId: true,
+      unixUsername: true,
+      installationPath: true
+    }
+  })
+
+  if (!installation) {
+    return {
+      status: 'failed',
+      message: `Site not found: ${installationId}`
+    }
+  }
+
+  await ensureWpCliOnServer(installation.serverId)
+
+  const beforeResult = await runWpCliCommand(installation, ['core', 'version'])
+  const previousVersion = beforeResult.stdout.trim()
+
+  await runWpCliCommand(installation, ['core', 'update'], { timeoutMs: 300_000 })
+  await runWpCliCommand(installation, ['core', 'update-db'], { timeoutMs: 300_000 })
+
+  const afterResult = await runWpCliCommand(installation, ['core', 'version'])
+  const wordpressVersion = afterResult.stdout.trim()
+
+  if (!wordpressVersion) {
+    return {
+      status: 'failed',
+      message: 'WordPress core updated, but its installed version could not be determined'
+    }
+  }
+
+  await prisma.wordPressInstallation.update({
+    where: { id: installation.id },
+    data: { wordpressVersion }
+  })
+
+  if (wordpressVersion === previousVersion) {
+    return {
+      status: 'skipped',
+      message: `WordPress is already up to date (${wordpressVersion})`
+    }
+  }
+
+  return {
+    status: 'success',
+    message: `WordPress updated from ${previousVersion || 'unknown'} to ${wordpressVersion}`
+  }
 }
 
 async function handleActivate(

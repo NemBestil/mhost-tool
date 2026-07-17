@@ -22,6 +22,7 @@ const statusText = computed(() => {
 })
 
 const showSite = ref(true)
+const showCore = ref(true)
 const showPlugins = ref(true)
 const showThemes = ref(true)
 const siteFilters = ref<string[]>([])
@@ -38,6 +39,7 @@ const siteFilterItems = computed(() => {
 
 const filteredLogs = computed(() => {
   return packageJobStore.logs.filter((log) => {
+    if (log.kind === 'core' && !showCore.value) return false
     if (log.kind === 'plugin' && !showPlugins.value) return false
     if (log.kind === 'theme' && !showThemes.value) return false
 
@@ -97,6 +99,7 @@ const filteredLogs = computed(() => {
       <div class="flex flex-col gap-3">
         <span>Package Job Log</span>
         <div class="flex flex-wrap items-center gap-3">
+          <UCheckbox v-model="showCore" label="WordPress" />
           <UCheckbox v-model="showPlugins" label="Plugins" />
           <UCheckbox v-model="showThemes" label="Themes" />
           <UCheckbox v-model="showSite" label="Show site" />

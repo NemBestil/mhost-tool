@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto'
 import Queue from 'better-queue'
 import { broadcastScanEvent } from '#server/utils/scanBroadcast'
 import {
+  executeWordPressCoreUpdate,
   executeSitePackageOperation,
   type PackageSource,
-  type SitePackageKind,
+  type SiteJobKind,
   type SitePackageOperationResult
 } from '#server/utils/sitePackageOperations'
 
@@ -13,7 +14,7 @@ export type PackageQueueOperation = 'update' | 'install' | 'install-activate'
 export type PackageQueueJobInput = {
   installationId: string
   siteTitle?: string
-  kind: SitePackageKind
+  kind: SiteJobKind
   slug: string
   operation: PackageQueueOperation
   source?: PackageSource
@@ -112,7 +113,11 @@ function createQueueState(): QueueState {
 
 function createQueue() {
   return new Queue<PackageQueueJob, SitePackageOperationResult>((job, cb) => {
-    executeSitePackageOperation(job)
+    const operation = job.kind === 'core'
+      ? executeWordPressCoreUpdate(job.installationId)
+      : executeSitePackageOperation(job)
+
+    operation
       .then(result => cb(null, result))
       .catch((error: any) => {
         cb(null, {

@@ -6,7 +6,7 @@ export interface PackageJobLogEntry {
   message: string
   siteId?: string
   siteTitle?: string
-  kind?: 'plugin' | 'theme'
+  kind?: 'plugin' | 'theme' | 'core'
   slug?: string
   operation?: 'update' | 'install' | 'install-activate'
 }

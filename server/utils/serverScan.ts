@@ -247,6 +247,9 @@ async function scanInstallation(
       return false
     }
 
+    const wordpressVersionCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar core version --skip-plugins --skip-themes 2>/dev/null'`
+    const wordpressVersion = (await session.exec(wordpressVersionCmd, { timeoutMs: 30000 })).stdout.trim() || null
+
     const timezoneCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar option get timezone_string --skip-plugins --skip-themes 2>/dev/null'`
     const timezone = (await session.exec(timezoneCmd, { timeoutMs: 30000 })).stdout.trim() || ''
 
@@ -336,6 +339,7 @@ async function scanInstallation(
         adminEmailFromName,
         phpVersion,
         phpMemoryLimit,
+        wordpressVersion,
         hostingStatus,
         lastScanAt: new Date()
       },
@@ -352,6 +356,7 @@ async function scanInstallation(
         adminEmailFromName,
         phpVersion,
         phpMemoryLimit,
+        wordpressVersion,
         hostingStatus,
         lastScanAt: new Date(),
         monitoringLevel: ctx.defaultNewSiteLevel
