@@ -20,7 +20,7 @@
     <div class="flex-1 flex flex-col min-h-0">
       <CustomFileJobActivity />
 
-      <div class="flex items-center justify-between gap-3 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex-wrap">
+      <div class="flex items-center justify-between gap-3 px-4 pb-4 sm:pt-4 border-b border-neutral-200 dark:border-neutral-800 flex-wrap">
         <UInput
           v-model="search"
           icon="i-lucide-search"

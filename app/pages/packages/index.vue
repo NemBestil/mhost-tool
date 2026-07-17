@@ -34,7 +34,7 @@
     >
       <div
           v-if="uploadStore.hasActivity"
-          class="mb-4 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
+          class="mb-4 sm:mx-4 sm:mt-4 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
           @click="isSlideoverOpen = true"
       >
         <div class="px-4 py-3 flex items-center gap-3">
@@ -82,12 +82,12 @@
       <UTabs
           :items="tabItems"
           class="flex-1 flex flex-col min-h-0"
-          :ui="{ content: 'flex-1 flex flex-col min-h-0' }"
+          :ui="{ list: 'sm:mx-3 sm:mt-4 sm:w-[calc(100%-1.5rem)] sm:justify-start', content: 'flex-1 flex flex-col min-h-0' }"
       >
         <!-- Installed Plugins Tab -->
         <template #installed-plugins>
           <div class="flex-1 flex flex-col min-h-0 mt-4">
-            <div class="flex flex-wrap items-center gap-3 mb-4">
+            <div class="flex flex-wrap items-center gap-3 px-4 mb-4">
               <UInput
                   v-model="installedPluginsSearch"
                   placeholder="Search plugins..."
@@ -213,7 +213,7 @@
         <!-- Installed Themes Tab -->
         <template #installed-themes>
           <div class="flex-1 flex flex-col min-h-0 mt-4">
-            <div class="flex flex-wrap items-center gap-3 mb-4">
+            <div class="flex flex-wrap items-center gap-3 px-4 mb-4">
               <UInput
                   v-model="installedThemesSearch"
                   placeholder="Search themes..."

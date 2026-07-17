@@ -9,7 +9,7 @@
       </UDropdownMenu>
     </template>
 
-    <div class="flex items-center gap-2 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800">
+    <div class="flex items-center gap-2 px-4 pb-4 sm:pt-4 border-b border-neutral-200 dark:border-neutral-800">
       <!-- Desktop filters -->
       <div class="hidden md:flex items-center gap-2 flex-1">
         <UInput
@@ -278,17 +278,22 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <UModal v-model:open="deleteModalOpen" title="Delete Selected Sites">
+    <UModal
+        v-model:open="deleteModalOpen"
+        :title="deleteCount === 1 ? 'Delete Site' : 'Delete Selected Sites'"
+        :content="{ onOpenAutoFocus: handleDeleteModalOpenAutoFocus }"
+        @after:enter="focusDeleteButton"
+    >
       <template #body>
         <p class="text-sm text-muted">
-          Are you sure you want to delete <strong>{{ selectedCount }}</strong> site(s) from MHost?
+          Are you sure you want to delete <strong>{{ deleteCount }}</strong> site(s) from MHost?
         </p>
         <p class="text-sm text-muted mt-2">
           The actual WordPress® sites will remain untouched on your servers. Only the records in MHost will be removed.
         </p>
       </template>
       <template #footer>
-        <div class="flex justify-end gap-2">
+        <div class="flex w-full justify-end gap-2">
           <UButton
               color="neutral"
               variant="outline"
@@ -296,6 +301,7 @@
               @click="deleteModalOpen = false"
           />
           <UButton
+              data-site-delete-confirm
               color="error"
               label="Delete"
               :loading="isDeleting"
@@ -432,6 +438,19 @@ const openCveModal = (siteId: string) => {
 // Delete modal state
 const deleteModalOpen = ref(false)
 const isDeleting = ref(false)
+const siteIdsToDelete = ref<string[]>([])
+const deleteCount = computed(() => siteIdsToDelete.value.length)
+
+const focusDeleteButton = () => {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLButtonElement>('[data-site-delete-confirm]')?.focus({preventScroll: true})
+  })
+}
+
+const handleDeleteModalOpenAutoFocus = (event: Event) => {
+  event.preventDefault()
+  focusDeleteButton()
+}
 
 // Batch action items
 const batchActionItems = computed(() => [
@@ -441,6 +460,7 @@ const batchActionItems = computed(() => [
       icon: 'lucide:trash',
       color: 'error' as const,
       onSelect: () => {
+        siteIdsToDelete.value = getSelectedSiteIds()
         deleteModalOpen.value = true
       }
     }
@@ -448,7 +468,7 @@ const batchActionItems = computed(() => [
 ])
 
 const confirmDelete = async () => {
-  const siteIds = getSelectedSiteIds()
+  const siteIds = siteIdsToDelete.value
   if (siteIds.length === 0) return
 
   isDeleting.value = true
@@ -478,6 +498,7 @@ const confirmDelete = async () => {
   } finally {
     isDeleting.value = false
     deleteModalOpen.value = false
+    siteIdsToDelete.value = []
   }
 }
 
@@ -650,7 +671,8 @@ const getActionItems = (row: Site) => [
       icon: 'lucide:trash',
       color: 'error' as const,
       onSelect: () => {
-        // TODO: Implement delete
+        siteIdsToDelete.value = [row.id]
+        deleteModalOpen.value = true
       }
     }
   ]

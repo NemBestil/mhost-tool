@@ -1,7 +1,7 @@
 <template>
   <NuxtLayout name="dashboard-page">
     <div class="flex-1 flex flex-col min-h-0">
-      <div class="px-4">
+      <div class="sm:p-4">
         <UTabs
           v-model="activeTab"
           :items="navItems"

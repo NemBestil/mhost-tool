@@ -12,7 +12,7 @@
     <div class="flex-1 flex flex-col min-h-0">
       <UAlert
         v-if="setupStatus !== 'pending' && !featureEnabled"
-        class="m-4"
+        class="sm:m-4"
         color="warning"
         variant="soft"
         title="WP Mail SMTP is disabled"
@@ -24,7 +24,7 @@
       </UAlert>
 
       <template v-else>
-        <div class="flex items-center gap-2 px-4 pb-4 border-b border-neutral-200 dark:border-neutral-800">
+        <div class="flex items-center gap-2 px-4 pb-4 sm:pt-4 border-b border-neutral-200 dark:border-neutral-800">
           <!-- Desktop Filters -->
           <div class="hidden md:flex items-center gap-2 flex-1">
             <UInput

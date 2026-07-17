@@ -3,7 +3,10 @@ const route = useRoute()
 </script>
 
 <template>
-  <UDashboardPanel id="home">
+  <UDashboardPanel
+    id="home"
+    :ui="{ body: 'sm:p-0' }"
+  >
     <template #header>
       <UDashboardNavbar
           :title="(route.meta?.title as string) ?? 'MHost'"

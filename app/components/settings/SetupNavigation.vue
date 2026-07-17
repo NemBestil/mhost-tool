@@ -22,5 +22,5 @@ const items = computed<NavigationMenuItem[]>(() => {
 </script>
 
 <template>
-  <UNavigationMenu :items="items" class="w-full -mt-6 -ms-1" />
+  <UNavigationMenu :items="items" class="w-auto sm:mx-4 sm:mt-2" />
 </template>

@@ -3,7 +3,7 @@
     <div class="flex-1 flex flex-col min-h-0">
       <UAlert
         v-if="setupStatus !== 'pending' && !featureEnabled"
-        class="m-4"
+        class="sm:m-4"
         color="warning"
         variant="soft"
         title="WP Rocket Cache is disabled"
@@ -15,7 +15,7 @@
       </UAlert>
 
       <template v-else>
-        <div class="p-4 pb-0">
+        <div class="px-4 pb-0">
           <WpRocketCacheJobActivity />
         </div>
 

@@ -21,7 +21,7 @@ const statusText = computed(() => {
 <template>
   <div
     v-if="customFileJobStore.hasActivity"
-    class="mb-4 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
+    class="mb-4 sm:mx-4 sm:mt-4 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
     @click="isSlideoverOpen = true"
   >
     <div class="px-4 py-3 flex items-center gap-3">

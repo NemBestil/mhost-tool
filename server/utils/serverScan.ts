@@ -118,6 +118,39 @@ type ScanInstallationContext = {
   sendEvent: (type: ScanEventType, message: string, data?: any) => void
 }
 
+type ExistingInstallation = {
+  id: string
+  installationPath: string
+}
+
+/**
+ * Remove local records for installations that are no longer present in a
+ * completed server discovery. Deleting the installation also cascades to its
+ * scanned plugins, themes, monitoring data, and other installation-owned data.
+ */
+async function removeMissingInstallations(
+  serverId: string,
+  existingInstallations: ExistingInstallation[],
+  discoveredPaths: Set<string>
+) {
+  const removedInstallations = existingInstallations.filter(
+    (installation) => !discoveredPaths.has(installation.installationPath)
+  )
+
+  if (removedInstallations.length === 0) {
+    return 0
+  }
+
+  const result = await prisma.wordPressInstallation.deleteMany({
+    where: {
+      serverId,
+      id: { in: removedInstallations.map((installation) => installation.id) }
+    }
+  })
+
+  return result.count
+}
+
 /**
  * Ensures wp-cli is installed on the server and detects the PHP binary to use.
  * Returns the absolute path to the PHP binary.
@@ -543,7 +576,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
       getOrCreateMonitoringConfig(),
       prisma.wordPressInstallation.findMany({
         where: { serverId: server.id },
-        select: { installationPath: true }
+        select: { id: true, installationPath: true }
       }),
       getOption<ServerScanState>(getServerScanStateOptionKey(server.id), {
         hasCompletedScan: false,
@@ -590,6 +623,19 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
     }
 
     sendEvent('log', `${validInstallations.length} valid WordPress® installations found`)
+
+    const removedCount = await removeMissingInstallations(
+      server.id,
+      existingInstallations,
+      new Set(validInstallations)
+    )
+    if (removedCount > 0) {
+      sendEvent(
+        'log',
+        `Removed ${removedCount} site${removedCount === 1 ? '' : 's'} no longer found on the server`
+      )
+    }
+
     sendEvent('progress', 'Starting detailed scan', { total: validInstallations.length, current: 0, success: 0, failed: 0 })
 
     const phpBinary = await setupWpCliAndDetectPhp(ssh, server, sendEvent)
