@@ -53,6 +53,17 @@
             <Icon name="lucide:signal" class="size-4" />
           </template>
         </USelectMenu>
+        <USelectMenu
+            v-model="selectedCoreVersion"
+            :items="coreVersionOptions"
+            placeholder="Core version"
+            class="w-48"
+            clear
+        >
+          <template #leading>
+            <Icon name="lucide:binary" class="size-4" />
+          </template>
+        </USelectMenu>
         <UCheckbox
             v-model="showDevSites"
             label="Dev-sites"
@@ -122,6 +133,21 @@
                 >
                   <template #leading>
                     <Icon name="lucide:signal" class="size-4" />
+                  </template>
+                </USelectMenu>
+              </UFormField>
+
+              <UFormField label="Core version">
+                <USelectMenu
+                    v-model="selectedCoreVersion"
+                    :items="coreVersionOptions"
+                    placeholder="All versions"
+                    class="w-full"
+                    size="xl"
+                    clear
+                >
+                  <template #leading>
+                    <Icon name="lucide:binary" class="size-4" />
                   </template>
                 </USelectMenu>
               </UFormField>
@@ -359,6 +385,7 @@ const sorting = ref([{id: 'siteTitle', desc: false}])
 
 const selectedServer = ref<{ label: string, value: string } | null>(null)
 const selectedHostingStatus = ref<{ label: string, value: string } | null>(null)
+const selectedCoreVersion = ref<string | null>(null)
 const showDevSites = ref(true)
 const isFilterDrawerOpen = ref(false)
 
@@ -367,6 +394,7 @@ const activeFilterCount = computed(() => {
   if (search.value) count++
   if (selectedServer.value) count++
   if (selectedHostingStatus.value) count++
+  if (selectedCoreVersion.value) count++
   if (!showDevSites.value) count++
   return count
 })
@@ -375,6 +403,7 @@ const clearFilters = () => {
   search.value = ''
   selectedServer.value = null
   selectedHostingStatus.value = null
+  selectedCoreVersion.value = null
   showDevSites.value = true
 }
 
@@ -396,6 +425,13 @@ const serverOptions = computed(() => {
   }
   return options
 })
+const coreVersionOptions = computed(() => {
+  const versions = (sites.value || [])
+    .map(site => site.wordpressVersion)
+    .filter((version): version is string => Boolean(version))
+
+  return [...new Set(versions)].sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))
+})
 
 const filteredSites = computed(() => {
   let result = sites.value || []
@@ -406,6 +442,10 @@ const filteredSites = computed(() => {
 
   if (selectedHostingStatus.value) {
     result = result.filter(s => s.hostingStatus === selectedHostingStatus.value!.value)
+  }
+
+  if (selectedCoreVersion.value) {
+    result = result.filter(s => s.wordpressVersion === selectedCoreVersion.value)
   }
 
   if (searchThrottled.value) {
