@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { prisma } from '#server/utils/db'
 import { broadcastScanEvent } from '#server/utils/scanBroadcast'
 import { detectWordPressPackage, toSafeSlug } from '#server/utils/wordpressPackage'
-import { compareVersions } from '#server/utils/uploadedPackages'
+import { compareVersions } from '#server/utils/versions'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 const UPLOAD_ROOT = resolve(process.cwd(), 'uploads')

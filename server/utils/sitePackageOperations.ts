@@ -1,7 +1,7 @@
 import { access } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { prisma } from '#server/utils/db'
-import { compareVersions } from '#server/utils/uploadedPackages'
+import { compareVersions, isVersionNewer } from '#server/utils/versions'
 import { execSshCommandByServerId, uploadFileToServerByServerId } from '#server/utils/ssh'
 import { detectPhpBinary } from '#server/utils/phpBinary'
 
@@ -243,7 +243,14 @@ async function handleUpdateOrInstall(
   input: SitePackageOperationInput
 ): Promise<SitePackageOperationResult> {
   const existing = await findInstalledPackage(installation.id, input.kind, input.slug)
-  const source = input.source ?? normalizeSource(existing?.source)
+  const latestUploadedVersion = input.operation === 'update' && !input.source
+    ? await findLatestUploadedVersion(input.kind, input.slug)
+    : null
+  const shouldUseLocalUpload = Boolean(
+    latestUploadedVersion &&
+    (!existing?.latestVersion || isVersionNewer(latestUploadedVersion, existing.latestVersion))
+  )
+  const source = input.source ?? (shouldUseLocalUpload ? 'external' : normalizeSource(existing?.source))
   const wpKind = input.kind === 'plugin' ? 'plugin' : 'theme'
   const wasActive = Boolean(existing?.isEnabled)
 
@@ -692,6 +699,20 @@ async function resolveExternalAsset(kind: SitePackageKind, slug: string): Promis
     remotePath,
     version: packageRow.version
   }
+}
+
+async function findLatestUploadedVersion(kind: SitePackageKind, slug: string): Promise<string | null> {
+  const packageRow = kind === 'plugin'
+    ? await prisma.uploadedWordPressPlugin.findFirst({
+      where: { slug, isLatest: true },
+      select: { version: true }
+    })
+    : await prisma.uploadedWordPressTheme.findFirst({
+      where: { slug, isLatest: true },
+      select: { version: true }
+    })
+
+  return packageRow?.version ?? null
 }
 
 async function ensureExternalAssetOnServer(serverId: string, asset: ExternalAsset): Promise<string> {

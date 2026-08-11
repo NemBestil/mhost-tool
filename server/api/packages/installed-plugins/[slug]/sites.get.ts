@@ -1,5 +1,5 @@
 import { prisma } from '#server/utils/db'
-import { compareVersions, isVersionNewer } from '#server/utils/uploadedPackages'
+import { compareVersions, isVersionNewer, resolveLatestKnownVersion } from '#server/utils/versions'
 
 type SiteWithVersion = {
   installationId: string
@@ -50,12 +50,10 @@ export default defineEventHandler(async (event) => {
     return { sites: [], latestVersion: null }
   }
 
-  // Determine the latest version: use WordPress.org version if available,
-  // otherwise fallback to uploaded plugin version
-  let latestVersion = plugins[0]?.latestVersion ?? null
-  if (!latestVersion && uploadedPlugin) {
-    latestVersion = uploadedPlugin.version
-  }
+  const latestVersion = resolveLatestKnownVersion(
+    ...plugins.map(plugin => plugin.latestVersion),
+    uploadedPlugin?.version
+  )
 
   // Map to site with version info
   const sites: SiteWithVersion[] = plugins.map(plugin => ({

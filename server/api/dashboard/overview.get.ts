@@ -1,7 +1,7 @@
 import { MonitoringLevel, MonitoringStatus } from '@@/prisma/generated/client'
 import { prisma } from '#server/utils/db'
 import { readMonitoringConfig } from '#server/utils/monitoring'
-import { isVersionNewer } from '#server/utils/uploadedPackages'
+import { isVersionNewer, resolveLatestKnownVersion } from '#server/utils/versions'
 import { getSetupSettings } from '#server/utils/setup'
 
 export default defineEventHandler(async () => {
@@ -91,7 +91,10 @@ export default defineEventHandler(async () => {
 
   const outdatedPluginSiteIds = new Set<string>()
   for (const plugin of plugins) {
-    const latestVersion = plugin.latestVersion || uploadedPluginLatestMap.get(plugin.slug)
+    const latestVersion = resolveLatestKnownVersion(
+      plugin.latestVersion,
+      uploadedPluginLatestMap.get(plugin.slug)
+    )
     if (latestVersion && isVersionNewer(latestVersion, plugin.version)) {
       outdatedPluginSiteIds.add(plugin.installationId)
     }
@@ -99,7 +102,10 @@ export default defineEventHandler(async () => {
 
   const outdatedThemeSiteIds = new Set<string>()
   for (const theme of themes) {
-    const latestVersion = theme.latestVersion || uploadedThemeLatestMap.get(theme.slug)
+    const latestVersion = resolveLatestKnownVersion(
+      theme.latestVersion,
+      uploadedThemeLatestMap.get(theme.slug)
+    )
     if (latestVersion && isVersionNewer(latestVersion, theme.version)) {
       outdatedThemeSiteIds.add(theme.installationId)
     }

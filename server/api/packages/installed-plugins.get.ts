@@ -1,6 +1,6 @@
 import { prisma } from '#server/utils/db'
 import { runVersionChecksIfNeeded } from '#server/utils/wordpressOrgApi'
-import { compareVersions, isVersionNewer } from '#server/utils/uploadedPackages'
+import { compareVersions, isVersionNewer, resolveLatestKnownVersion } from '#server/utils/versions'
 import { getSiteCveDetails } from '#server/utils/cveDatabase'
 
 type InstalledPluginRow = {
@@ -56,12 +56,11 @@ export default defineEventHandler(async () => {
   for (const plugin of plugins) {
     const existing = pluginMap.get(plugin.slug)
 
-    // Determine the latest version: use plugin.latestVersion (from WP.org)
-    // or fallback to uploadedLatestMap (from local uploads)
-    let latestVersion = plugin.latestVersion
-    if (!latestVersion && uploadedLatestMap.has(plugin.slug)) {
-      latestVersion = uploadedLatestMap.get(plugin.slug)!
-    }
+    // Prefer the highest version known from WordPress.org or local uploads.
+    const latestVersion = resolveLatestKnownVersion(
+      plugin.latestVersion,
+      uploadedLatestMap.get(plugin.slug)
+    )
 
     const isOutdated = latestVersion ? isVersionNewer(latestVersion, plugin.version) : false
 

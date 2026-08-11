@@ -1,6 +1,6 @@
 import { prisma } from '#server/utils/db'
 import { runVersionChecksIfNeeded } from '#server/utils/wordpressOrgApi'
-import { compareVersions, isVersionNewer } from '#server/utils/uploadedPackages'
+import { compareVersions, isVersionNewer, resolveLatestKnownVersion } from '#server/utils/versions'
 import { getSiteCveDetails } from '#server/utils/cveDatabase'
 
 type InstalledThemeRow = {
@@ -56,12 +56,11 @@ export default defineEventHandler(async () => {
   for (const theme of themes) {
     const existing = themeMap.get(theme.slug)
 
-    // Determine the latest version: use theme.latestVersion (from WP.org)
-    // or fallback to uploadedLatestMap (from local uploads)
-    let latestVersion = theme.latestVersion
-    if (!latestVersion && uploadedLatestMap.has(theme.slug)) {
-      latestVersion = uploadedLatestMap.get(theme.slug)!
-    }
+    // Prefer the highest version known from WordPress.org or local uploads.
+    const latestVersion = resolveLatestKnownVersion(
+      theme.latestVersion,
+      uploadedLatestMap.get(theme.slug)
+    )
 
     const isOutdated = latestVersion ? isVersionNewer(latestVersion, theme.version) : false
 
