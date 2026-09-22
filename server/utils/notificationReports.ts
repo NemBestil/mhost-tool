@@ -263,6 +263,48 @@ export async function sendCveAlertReport() {
   }
 }
 
+export async function sendCveDatabaseUpdateFailedReport(error: unknown) {
+  try {
+    await sendCveDatabaseUpdateFailedReportEmail(error)
+  } catch (notificationError) {
+    console.error('Failed to prepare CVE database update failure report:', notificationError)
+  }
+}
+
+async function sendCveDatabaseUpdateFailedReportEmail(error: unknown) {
+  const [settings, smtpSettings] = await Promise.all([
+    getNotificationReportsSettings(),
+    getSmtpSettings()
+  ])
+
+  if (settings.recipients.length === 0 || !isValidSmtpSettings(smtpSettings)) {
+    return
+  }
+
+  const subject = '[MHost] CVE database update failed'
+  const body = [
+    'MHost CVE database update failed.',
+    '',
+    'The Wordfence vulnerability data could not be fully updated. Existing CVE data may be outdated until the next successful update.',
+    '',
+    `Error: ${getErrorMessage(error)}`,
+    '',
+    `Generated at ${new Date().toISOString()}`
+  ].join('\n')
+
+  for (const recipient of settings.recipients) {
+    try {
+      await sendPlainTextEmail(smtpSettings, recipient, subject, body)
+    } catch (emailError) {
+      console.error(`Failed to send CVE database update failure report to ${recipient}:`, emailError)
+    }
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 function isVersionInRange(
   version: string,
   fromVersion: string | null,
