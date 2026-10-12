@@ -32,6 +32,7 @@ export type WorldlineSite = {
   siteUrl: string
   server: { name: string }
   plugin?: { version: string, isEnabled: boolean }
+  nbCoreAvailable: boolean
   worldlineStats: WorldlineReport | null
   worldlineCheckedAt: string | null
   worldlineScanError: string | null

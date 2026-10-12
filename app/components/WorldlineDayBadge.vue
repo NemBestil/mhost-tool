@@ -2,8 +2,8 @@
 import type { WorldlineDay } from '../../shared/utils/siteHealth'
 
 const props = defineProps<{ day?: WorldlineDay, error?: string | null }>()
-const label = computed(() => props.day?.total === 0 ? '-' : props.day?.captureStatus === 'captured' ? 'OK' : 'Fail')
-const color = computed(() => label.value === 'OK' ? 'success' : label.value === '-' ? 'neutral' : 'error')
+const label = computed(() => !props.day ? '?' : props.day.total === 0 ? '-' : props.day.captureStatus === 'captured' ? 'OK' : 'Fail')
+const color = computed(() => label.value === '?' ? 'warning' : label.value === 'OK' ? 'success' : label.value === '-' ? 'neutral' : 'error')
 const tooltip = computed(() => {
   const day = props.day
   if (!day) return props.error ?? 'No scan result. Scan the site to check captures.'

@@ -12,15 +12,29 @@ const { data: sites, status, error, refetch } = useQuery<SiteList>({
 })
 const scanStore = useScanStore()
 const search = ref('')
-const filteredSites = computed(() => (sites.value ?? []).filter(site =>
+
+function decodeSiteTitle(title: string): string {
+  const decoder = document.createElement('textarea')
+  // Decode entity tokens as text, preserving literal markup in site names.
+  return title.replace(/&(?:#\d+|#x[\da-f]+|[a-z][\da-z]+);/gi, entity => {
+    decoder.innerHTML = entity
+    return decoder.value
+  })
+}
+
+const displaySites = computed(() => (sites.value ?? []).map(site => ({
+  ...site,
+  siteTitle: decodeSiteTitle(site.siteTitle)
+})))
+const filteredSites = computed(() => displaySites.value.filter(site =>
   `${site.siteTitle} ${site.siteUrl} ${site.server.name}`.toLowerCase().includes(search.value.toLowerCase())
 ))
 const days = [1, 2, 3, 4, 5, 6, 7]
 async function refreshSites() { await refetch() }
 const columns: TableColumn<Site>[] = [
   { accessorKey: 'siteTitle', header: 'Site' },
-  { id: 'plugin', header: 'Plugin' },
-  ...days.map(day => ({ id: `day${day}`, header: day === 1 ? 'Yesterday' : `${day} days ago` })),
+  { id: 'server', header: 'Server' },
+  ...days.map(day => ({ id: `day${day}`, header: day === 1 ? '1 day' : `${day} days` })),
   { id: 'actions', header: '' }
 ]
 watch(() => scanStore.isScanning, (scanning, previous) => {
@@ -33,7 +47,8 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
     <div class="p-4 space-y-4">
       <p class="text-sm text-muted">
         OK means at least one capture was found in up to five sampled orders. Fail means no capture was confirmed.
-        A dash means there are no Worldline orders. Dates follow each site's timezone and exclude today.
+        A dash means there are no Worldline orders. A question mark means no scan result is available or nb-core is missing or inactive.
+        Dates follow each site's timezone and exclude today.
         Recheck retries dates without a confirmed capture; OK days stay cached.
       </p>
       <div class="flex flex-wrap gap-3 items-center">
@@ -44,16 +59,13 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
     </div>
     <UTable :data="filteredSites" :columns="columns" :column-pinning="{ right: ['actions'] }" :loading="status === 'pending'" class="flex-1" :ui="{ th: 'whitespace-nowrap', td: 'whitespace-nowrap' }">
       <template #siteTitle-cell="{ row }">
-        <div class="flex flex-col gap-1">
-          <NuxtLink :to="`/sites/${row.original.id}`" class="font-medium text-primary">{{ row.original.siteTitle }}</NuxtLink>
-          <a :href="row.original.siteUrl" target="_blank" rel="noopener noreferrer" class="text-sm text-muted">{{ row.original.siteUrl }}</a>
-          <span class="text-sm text-muted">{{ row.original.server.name }}</span>
+        <div class="flex w-44 flex-col gap-1">
+          <NuxtLink :to="`/sites/${row.original.id}`" :title="row.original.siteTitle" class="truncate font-medium text-primary">{{ row.original.siteTitle }}</NuxtLink>
+          <a :href="row.original.siteUrl" :title="row.original.siteUrl" target="_blank" rel="noopener noreferrer" class="truncate text-sm text-muted">{{ row.original.siteUrl }}</a>
         </div>
       </template>
-      <template #plugin-cell="{ row }">
-        <UBadge :color="row.original.plugin?.isEnabled ? 'success' : 'neutral'" variant="subtle">
-          {{ row.original.plugin?.version }} · {{ row.original.plugin?.isEnabled ? 'Active' : 'Inactive' }}
-        </UBadge>
+      <template #server-cell="{ row }">
+        <span :title="row.original.server.name" class="block max-w-32 truncate text-sm">{{ row.original.server.name }}</span>
       </template>
       <template v-for="day in days" :key="day" #[`day${day}-cell`]="{ row }">
         <WorldlineDayBadge :day="row.original.worldlineStats?.days.find(item => item.daysAgo === day)" :error="row.original.worldlineScanError" />
@@ -64,7 +76,7 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
           icon="i-lucide-refresh-cw"
           color="neutral"
           variant="outline"
-          :disabled="!row.original.plugin?.isEnabled || scanStore.isServerScanning(row.original.serverId)"
+          :disabled="!row.original.nbCoreAvailable || !row.original.plugin?.isEnabled || scanStore.isServerScanning(row.original.serverId)"
           @click="scanStore.startWorldlineRecheck(row.original.id, row.original.serverId, () => refetch())"
         />
       </template>
