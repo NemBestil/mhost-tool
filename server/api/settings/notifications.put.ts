@@ -22,6 +22,8 @@ const bodySchema = z.object({
     recipients: z.array(z.string()).default([]),
     newSitesFound: z.boolean().default(false),
     cveAlert: z.boolean().default(false),
+    cronAlert: z.boolean().default(true),
+    worldlineCaptureAlert: z.boolean().default(true),
     cveAlertMinScore: z.number().min(0).max(10).default(7.0)
   })
 })
@@ -75,7 +77,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if ((body.reports.newSitesFound || body.reports.cveAlert) && recipients.length === 0) {
+  if ((body.reports.newSitesFound || body.reports.cveAlert || body.reports.cronAlert || body.reports.worldlineCaptureAlert) && recipients.length === 0) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Validation error',
@@ -93,6 +95,8 @@ export default defineEventHandler(async (event) => {
     reports: {
       newSitesFound: body.reports.newSitesFound,
       cveAlert: body.reports.cveAlert,
+      cronAlert: body.reports.cronAlert,
+      worldlineCaptureAlert: body.reports.worldlineCaptureAlert,
       cveAlertMinScore: body.reports.cveAlertMinScore
     }
   })

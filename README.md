@@ -29,6 +29,33 @@ MHost is an independent, open-source project. It is **not** affiliated with, spo
   - Track versions and queue update jobs
   - Identify missing plugin/theme installations per site
 - Monitoring with priority levels and event history, via e-mail, pushover and webhook
+- Cron heartbeat status and Worldline capture samples, with e-mail alerts after site scans
+
+### Cron and Worldline checks
+
+Install and activate the updated NemBestil Core plugin on the WordPress sites. Its hourly
+`nbcore_cron_heartbeat` hook records `nbcore_cron_last_run` in UTC. MHost reads this during
+site scans and marks cron overdue after 24 hours. New installations have 24 hours to
+record their first heartbeat; older plugins without monitoring data show an unknown status.
+
+The Worldline sidebar lists installations with `bambora-online-checkout`. It shows the
+previous seven calendar days in each site's timezone, excluding today. `OK` means at least
+one sampled order has a captured amount, `Fail` means no capture was confirmed, and `-`
+means no Worldline orders exist for that date. Tooltips include the sample time and failures.
+
+The WordPress command is `wp nb-core worldline-stats --format=json`. It checks at most five
+orders per date, prioritizing processing/completed orders, and stops at the first capture.
+Partial captures count as a capture. Automatic scans check each date once and retain all
+results, including failed lookups. The first scan can check all seven dates; later scans
+only sample new dates. The per-site **Gentjek** button explicitly resamples dates without
+a confirmed capture using `--recheck`; confirmed captures always stay cached.
+
+Configure SMTP and recipients under **Setup → E-mail notifications**. Cron and Worldline
+alerts are enabled by default and can be toggled separately. A separate scan-alert e-mail
+is sent when cron is overdue or yesterday has at least two processing/completed Worldline
+orders and a negative sample. Failed API lookups are shown as `Fail` in the UI with an
+explanation, but do not trigger a missing-capture alarm. A Worldline-only recheck sends
+capture alerts only. Apply database migrations with `npm run prisma:deploy` when deploying.
 
 ## Why MHost
 

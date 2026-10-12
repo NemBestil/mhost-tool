@@ -213,6 +213,7 @@
       <!-- Status Column -->
       <template #status-cell="{ row }">
         <div class="flex items-center gap-1">
+          <CronStatusBadge :site="row.original" />
           <UTooltip :text="getHostingStatusLabel(row.original.hostingStatus)">
             <UBadge
                 :color="getHostingStatusColor(row.original.hostingStatus)"

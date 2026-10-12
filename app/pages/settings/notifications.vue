@@ -157,6 +157,21 @@
                   </UFormField>
                 </div>
               </div>
+
+              <div class="rounded-lg border border-default p-4 flex items-start justify-between gap-4">
+                <div class="space-y-1 text-sm">
+                  <p class="font-medium text-default">Cron alert</p>
+                  <p class="text-muted">Send an alert after site scans if the cron heartbeat is older than 24 hours, or has never run after 24 hours of monitoring.</p>
+                </div>
+                <USwitch v-model="reportCronAlert" :disabled="isSaving || isTesting" />
+              </div>
+              <div class="rounded-lg border border-default p-4 flex items-start justify-between gap-4">
+                <div class="space-y-1 text-sm">
+                  <p class="font-medium text-default">Worldline capture alert</p>
+                  <p class="text-muted">Send an alert after site scans when yesterday has at least two processing/completed orders and no capture is found in the sample.</p>
+                </div>
+                <USwitch v-model="reportWorldlineCaptureAlert" :disabled="isSaving || isTesting" />
+              </div>
             </div>
 
             <div class="flex flex-wrap gap-2 justify-end">
@@ -231,6 +246,8 @@ type NotificationSettingsResponse = {
     recipients: string[]
     newSitesFound: boolean
     cveAlert: boolean
+    cronAlert: boolean
+    worldlineCaptureAlert: boolean
     cveAlertMinScore: number
   }
 }
@@ -259,6 +276,8 @@ const testRecipient = ref('')
 const reportRecipientsInput = ref('')
 const reportNewSitesFound = ref(false)
 const reportCveAlert = ref(false)
+const reportCronAlert = ref(true)
+const reportWorldlineCaptureAlert = ref(true)
 const reportCveAlertMinScore = ref(7.0)
 const isSaving = ref(false)
 const isTesting = ref(false)
@@ -281,6 +300,8 @@ watch(data, (value) => {
   reportRecipientsInput.value = value.reports.recipients.join('\n')
   reportNewSitesFound.value = value.reports.newSitesFound
   reportCveAlert.value = value.reports.cveAlert
+  reportCronAlert.value = value.reports.cronAlert
+  reportWorldlineCaptureAlert.value = value.reports.worldlineCaptureAlert
   reportCveAlertMinScore.value = value.reports.cveAlertMinScore
 }, { immediate: true })
 
@@ -352,6 +373,8 @@ const saveSettings = async () => {
           recipients: parseReportRecipients(reportRecipientsInput.value),
           newSitesFound: reportNewSitesFound.value,
           cveAlert: reportCveAlert.value,
+          cronAlert: reportCronAlert.value,
+          worldlineCaptureAlert: reportWorldlineCaptureAlert.value,
           cveAlertMinScore: reportCveAlertMinScore.value
         }
       }

@@ -78,6 +78,13 @@ model WordPressInstallation {
   hostingStatus                HostingStatus @default(UNKNOWN)
   timezone                     String?
   usesServerCron               Boolean           @default(false)
+  cronMonitorStartedAt         DateTime?
+  cronLastRunAt                DateTime?
+  cronCheckedAt                DateTime?
+  cronScanError                String?
+  worldlineStats               Json?
+  worldlineCheckedAt           DateTime?
+  worldlineScanError           String?
   adminEmail                   String?
   adminEmailFromName           String?
   hasWooCommerce               Boolean           @default(false)

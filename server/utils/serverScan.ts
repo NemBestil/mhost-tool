@@ -2,7 +2,9 @@ import { getOption, prisma, setOption } from '#server/utils/db'
 import { openSshConnection, type SshConnection, type SshSession } from '#server/utils/ssh'
 import { broadcastScanEvent, type BroadcastEvent } from '#server/utils/scanBroadcast'
 import { getOrCreateMonitoringConfig } from '#server/utils/monitoring'
-import { sendNewSitesFoundReport, type NewSiteReportEntry } from '#server/utils/notificationReports'
+import { sendNewSitesFoundReport, sendSiteHealthAlertReport, type NewSiteReportEntry } from '#server/utils/notificationReports'
+import { readCronHealth, readWorldlineHealth } from '#server/utils/siteHealthScan'
+import { Prisma } from '@@/prisma/generated/client'
 import { associateCvesToSites } from '#server/utils/cveDatabase'
 import { validateAmazonSesCredentials } from '#server/utils/amazonSes'
 import {
@@ -115,6 +117,7 @@ type ScanInstallationContext = {
   knownInstallationPaths: Set<string>
   hadCompletedScan: boolean
   newSitesFound: NewSiteReportEntry[]
+  scannedInstallationIds: string[]
   sendEvent: (type: ScanEventType, message: string, data?: any) => void
 }
 
@@ -376,6 +379,7 @@ async function scanInstallation(
     const pluginsCmd = `su - ${unixUser} -s /bin/bash -c 'cd "${wpDir}" && ${phpBinary} /opt/mhost-cli/wp-cli.phar plugin list --format=json --fields=name,title,status,update,version,update_version,auto_update --skip-plugins --skip-themes 2>/dev/null'`
     let wpMailSmtpPlugin: WpMailSmtpPluginInfo | null = null
     let hasWooCommerce = false
+    let hasActiveWorldline = false
     try {
       const pluginsResult = await session.exec(pluginsCmd, { timeoutMs: 60000 })
       const plugins = JSON.parse(pluginsResult.stdout.trim() || '[]')
@@ -387,7 +391,8 @@ async function scanInstallation(
         }))
       )
 
-      hasWooCommerce = plugins.some((plugin: any) => plugin.name === 'woocommerce' && plugin.status === 'active')
+      hasWooCommerce = plugins.some((plugin: any) => plugin.name === 'woocommerce' && ['active', 'active-network'].includes(plugin.status))
+      hasActiveWorldline = plugins.some((plugin: any) => plugin.name === 'bambora-online-checkout' && ['active', 'active-network'].includes(plugin.status))
 
       await prisma.wordPressPlugin.deleteMany({
         where: { installationId: installation.id }
@@ -433,7 +438,7 @@ async function scanInstallation(
             title: plugin.title || plugin.name || 'Unknown',
             slug: pluginSlug,
             version: plugin.version || '',
-            isEnabled: plugin.status === 'active',
+            isEnabled: ['active', 'active-network'].includes(plugin.status),
             autoUpdate: plugin.auto_update === 'on',
             mainFilePath
           }
@@ -487,6 +492,29 @@ async function scanInstallation(
         wooCommerceEmailFromName
       }
     })
+
+    const healthExec = (args: string[], loadPlugins: boolean, timeoutMs: number) => session.exec(
+      buildWpCliCommand(unixUser, wpDir, phpBinary, args, { skipPlugins: !loadPlugins }),
+      { timeoutMs }
+    )
+    const cronHealth = await readCronHealth(healthExec)
+    if (cronHealth.cronScanError) sendEvent('error', `Failed to read cron heartbeat for ${siteTitle}: ${cronHealth.cronScanError}`)
+    await prisma.wordPressInstallation.update({ where: { id: installation.id }, data: cronHealth })
+
+    if (hasActiveWorldline) {
+      sendEvent('log', `Checking Worldline capture samples for ${siteTitle}...`)
+      const health = await readWorldlineHealth(healthExec)
+      if (health.worldlineScanError) sendEvent('error', `Failed to read Worldline samples for ${siteTitle}: ${health.worldlineScanError}`)
+      await prisma.wordPressInstallation.update({
+        where: { id: installation.id },
+        data: { ...health, worldlineStats: health.worldlineStats ?? Prisma.DbNull }
+      })
+    } else {
+      await prisma.wordPressInstallation.update({
+        where: { id: installation.id },
+        data: { worldlineStats: Prisma.DbNull, worldlineCheckedAt: new Date(), worldlineScanError: 'Worldline is inactive or its plugin information could not be read.' }
+      })
+    }
 
     sendEvent('log', `Reading WP Mail SMTP settings for ${siteTitle}...`)
     try {
@@ -556,6 +584,7 @@ async function scanInstallation(
       sendEvent('error', `Failed to get themes: ${e}`)
     }
 
+    ctx.scannedInstallationIds.push(installation.id)
     return true
   } catch (err: any) {
     sendEvent('error', `Error processing ${wpDir}: ${err.message}`)
@@ -659,6 +688,7 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
       knownInstallationPaths,
       hadCompletedScan,
       newSitesFound,
+      scannedInstallationIds: [],
       sendEvent
     }
 
@@ -689,6 +719,8 @@ export async function runServerScan(server: ServerForScan): Promise<ServerScanRe
     })
 
     await Promise.all(workers)
+
+    await sendSiteHealthAlertReport(scanContext.scannedInstallationIds)
 
     try {
       await setOption(getServerScanStateOptionKey(server.id), {
@@ -808,11 +840,14 @@ export async function runSiteScanById(siteId: string): Promise<ServerScanResult>
       knownInstallationPaths: new Set([wpDir]),
       hadCompletedScan: false,
       newSitesFound: [],
+      scannedInstallationIds: [],
       sendEvent
     }
 
     const success = await scanInstallation(wpDir, ssh, scanContext)
     const result: ServerScanResult = { success: success ? 1 : 0, failed: success ? 0 : 1 }
+
+    await sendSiteHealthAlertReport(scanContext.scannedInstallationIds)
 
     try {
       await associateCvesToSites()

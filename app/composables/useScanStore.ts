@@ -183,6 +183,27 @@ export const useScanStore = defineStore('scan', () => {
     activeScans.value = {}
   }
 
+  const startWorldlineRecheck = async (siteId: string, serverId: string, onComplete?: () => void) => {
+    if (isServerScanning(serverId)) return
+    connectWebSocket()
+    activeScans.value[serverId] = { total: 1, current: 0, success: 0, failed: 0 }
+    completedScans.value.delete(serverId)
+    // Register before dispatch; a cached result may finish immediately.
+    const unwatch = watch(() => completedScans.value.has(serverId), completed => {
+      if (completed) {
+        onComplete?.()
+        unwatch()
+      }
+    })
+    try {
+      await useApiClient()(`/worldline/${siteId}/recheck`, { method: 'POST' })
+    } catch (error: any) {
+      unwatch()
+      delete activeScans.value[serverId]
+      addLog('error', `Failed to start Worldline recheck: ${error.message}`, serverId)
+    }
+  }
+
   // Auto-connect WebSocket on client side
   if (import.meta.client) {
     connectWebSocket()
@@ -201,6 +222,7 @@ export const useScanStore = defineStore('scan', () => {
     isServerScanning,
     startScan,
     startSiteScan,
+    startWorldlineRecheck,
     clearScan,
     connectWebSocket,
     disconnectWebSocket

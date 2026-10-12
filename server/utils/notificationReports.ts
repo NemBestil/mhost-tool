@@ -2,6 +2,7 @@ import { getOption } from '#server/utils/db'
 import { prisma } from '#server/utils/db'
 import { requireEmail } from '#server/utils/siteUserInput'
 import { getSmtpSettings, isValidSmtpSettings, sendPlainTextEmail } from '#server/utils/smtp'
+import { getCronStatus, hasMissingWorldlineCapture, worldlineReportSchema } from '../../shared/utils/siteHealth'
 
 export const NOTIFICATION_REPORTS_OPTION_KEY = 'main.notificationReports'
 
@@ -10,6 +11,8 @@ export type NotificationReportsSettings = {
   reports: {
     newSitesFound: boolean
     cveAlert: boolean
+    cronAlert: boolean
+    worldlineCaptureAlert: boolean
     cveAlertMinScore: number
   }
 }
@@ -26,6 +29,8 @@ export function getDefaultNotificationReportsSettings(): NotificationReportsSett
     reports: {
       newSitesFound: false,
       cveAlert: false,
+      cronAlert: true,
+      worldlineCaptureAlert: true,
       cveAlertMinScore: 7.0
     }
   }
@@ -60,6 +65,8 @@ export function normalizeNotificationReportsSettings(
     reports: {
       newSitesFound: Boolean(settings?.reports?.newSitesFound),
       cveAlert: Boolean(settings?.reports?.cveAlert),
+      cronAlert: settings?.reports?.cronAlert !== false,
+      worldlineCaptureAlert: settings?.reports?.worldlineCaptureAlert !== false,
       cveAlertMinScore: Number.isFinite(cveAlertMinScore) && cveAlertMinScore >= 0 && cveAlertMinScore <= 10
         ? cveAlertMinScore
         : 7.0
@@ -268,6 +275,48 @@ export async function sendCveDatabaseUpdateFailedReport(error: unknown) {
     await sendCveDatabaseUpdateFailedReportEmail(error)
   } catch (notificationError) {
     console.error('Failed to prepare CVE database update failure report:', notificationError)
+  }
+}
+
+export async function sendSiteHealthAlertReport(installationIds: string[], options: { includeCron?: boolean } = {}) {
+  if (installationIds.length === 0) return
+  try {
+    const [settings, smtpSettings] = await Promise.all([getNotificationReportsSettings(), getSmtpSettings()])
+    if (settings.recipients.length === 0 || !isValidSmtpSettings(smtpSettings)) return
+    if (!settings.reports.cronAlert && !settings.reports.worldlineCaptureAlert) return
+    const sites = await prisma.wordPressInstallation.findMany({
+      where: { id: { in: installationIds } },
+      include: { plugins: { where: { slug: 'bambora-online-checkout', isEnabled: true } } },
+      orderBy: { siteUrl: 'asc' }
+    })
+    const lines: string[] = []
+    let affected = 0
+    for (const site of sites) {
+      const issues: string[] = []
+      if (options.includeCron !== false && settings.reports.cronAlert && getCronStatus(site) === 'overdue') {
+        issues.push(`Cron has not run within 24 hours. Last heartbeat: ${site.cronLastRunAt?.toISOString() ?? 'Never'}. Monitoring since: ${site.cronMonitorStartedAt?.toISOString()}.`)
+      }
+      const report = worldlineReportSchema.safeParse(site.worldlineStats)
+      if (settings.reports.worldlineCaptureAlert && site.plugins.length > 0 && !site.worldlineScanError && report.success && hasMissingWorldlineCapture(report.data)) {
+        const day = report.data.days[0]!
+        issues.push(`Worldline: ${day.eligible} processing/completed orders placed on ${day.date} (${report.data.timezone}); no captures found in ${day.sampled} sampled orders. Sample checked at ${day.checkedAt}.`)
+      }
+      if (issues.length > 0) {
+        affected++
+        lines.push(`${site.siteTitle} (${site.siteUrl})`, ...issues.map(issue => `  - ${issue}`), '')
+      }
+    }
+    if (!affected) return
+    const body = ['MHost site scan alerts', '', ...lines, `Generated at ${new Date().toISOString()}`].join('\n')
+    for (const recipient of settings.recipients) {
+      try {
+        await sendPlainTextEmail(smtpSettings, recipient, `[MHost] Cron / Worldline alerts on ${affected} site(s)`, body)
+      } catch (error) {
+        console.error(`Failed to send site-health report to ${recipient}:`, error)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to prepare site-health report:', error)
   }
 }
 

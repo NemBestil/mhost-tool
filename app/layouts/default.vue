@@ -75,7 +75,12 @@ const links = computed<NavigationMenuItem[][]>(() => {
     }
   )
 
-  const plugins = [];
+  const plugins = [{
+    to: '/worldline',
+    icon: 'i-lucide-credit-card',
+    label: 'Worldline',
+    active: route.path.startsWith('/worldline')
+  }];
 
   if (setupSettings.value?.features.wpMailSmtpPro) {
     plugins.push({
