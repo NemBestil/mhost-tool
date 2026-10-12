@@ -42,9 +42,9 @@
           </template>
         </USelectMenu>
         <USelectMenu
-            v-model="selectedHostingStatus"
-            :items="hostingStatusOptions"
-            value-attribute="value"
+            v-model="selectedStatus"
+            :items="statusOptions"
+            value-key="value"
             placeholder="Filter by status"
             class="w-48"
             clear
@@ -123,9 +123,9 @@
 
               <UFormField label="Status">
                 <USelectMenu
-                    v-model="selectedHostingStatus"
-                    :items="hostingStatusOptions"
-                    value-attribute="value"
+                    v-model="selectedStatus"
+                    :items="statusOptions"
+                    value-key="value"
                     placeholder="All statuses"
                     class="w-full"
                     size="xl"
@@ -355,7 +355,8 @@ import type {TableColumn} from '@nuxt/ui'
 import {formatDistanceToNow} from 'date-fns'
 import {useQuery} from '@tanstack/vue-query'
 import type {TypedInternalResponse} from 'nitropack'
-import {refDebounced} from "@vueuse/core";
+import {refDebounced, useNow} from "@vueuse/core";
+import {getCronStatus} from '../../../shared/utils/siteHealth'
 
 const UCheckbox = resolveComponent('UCheckbox')
 
@@ -385,7 +386,8 @@ const searchThrottled = refDebounced(search, 500)
 const sorting = ref([{id: 'siteTitle', desc: false}])
 
 const selectedServer = ref<{ label: string, value: string } | null>(null)
-const selectedHostingStatus = ref<{ label: string, value: string } | null>(null)
+const selectedStatus = ref<string | null>(null)
+const now = useNow({ interval: 60_000 })
 const selectedCoreVersion = ref<string | null>(null)
 const showDevSites = ref(true)
 const isFilterDrawerOpen = ref(false)
@@ -394,7 +396,7 @@ const activeFilterCount = computed(() => {
   let count = 0
   if (search.value) count++
   if (selectedServer.value) count++
-  if (selectedHostingStatus.value) count++
+  if (selectedStatus.value) count++
   if (selectedCoreVersion.value) count++
   if (!showDevSites.value) count++
   return count
@@ -403,7 +405,7 @@ const activeFilterCount = computed(() => {
 const clearFilters = () => {
   search.value = ''
   selectedServer.value = null
-  selectedHostingStatus.value = null
+  selectedStatus.value = null
   selectedCoreVersion.value = null
   showDevSites.value = true
 }
@@ -413,11 +415,14 @@ const isDevSite = (siteUrl: string) => {
   const patterns = setupSettings.value.developmentSites.split(/\s+/).filter(Boolean)
   return patterns.some(p => siteUrl.toLowerCase().includes(p.toLowerCase()))
 }
-const hostingStatusOptions = [
+const statusOptions = [
   { label: 'Public', value: 'PUBLIC' },
   { label: 'Private', value: 'PRIVATE' },
   { label: 'Inactive', value: 'INACTIVE' },
-  { label: 'Unknown', value: 'UNKNOWN' }
+  { label: 'Unknown', value: 'UNKNOWN' },
+  { label: 'No cron-heartbeat', value: 'NO_CRON_HEARTBEAT' },
+  { label: 'Has cron-heartbeat', value: 'HAS_CRON_HEARTBEAT' },
+  { label: 'No nb-core', value: 'NO_NB_CORE' }
 ]
 const serverOptions = computed(() => {
   const options = []
@@ -441,8 +446,14 @@ const filteredSites = computed(() => {
     result = result.filter(s => s.serverId === selectedServer.value!.value)
   }
 
-  if (selectedHostingStatus.value) {
-    result = result.filter(s => s.hostingStatus === selectedHostingStatus.value!.value)
+  if (selectedStatus.value) {
+    const filter = selectedStatus.value
+    result = result.filter(site => {
+      if (filter === 'NO_CRON_HEARTBEAT') return getCronStatus(site, now.value.getTime()) !== 'ok'
+      if (filter === 'HAS_CRON_HEARTBEAT') return getCronStatus(site, now.value.getTime()) === 'ok'
+      if (filter === 'NO_NB_CORE') return !site.hasNbCore
+      return site.hostingStatus === filter
+    })
   }
 
   if (selectedCoreVersion.value) {

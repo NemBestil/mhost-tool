@@ -25,6 +25,13 @@ export const worldlineReportSchema = z.object({
 
 export type WorldlineReport = z.infer<typeof worldlineReportSchema>
 export type WorldlineDay = WorldlineReport['days'][number]
+
+export function getWorldlineDayStatus(day?: WorldlineDay): 'OK' | 'No orders' | 'Fail' | '?' {
+  if (!day) return '?'
+  if (day.total === 0) return 'No orders'
+  return day.captureStatus === 'captured' ? 'OK' : 'Fail'
+}
+
 export type WorldlineSite = {
   id: string
   serverId: string

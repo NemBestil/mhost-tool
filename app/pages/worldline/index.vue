@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import type { WorldlineSite } from '../../../shared/utils/siteHealth'
+import { getWorldlineDayStatus, type WorldlineSite } from '../../../shared/utils/siteHealth'
 import { useQuery } from '@tanstack/vue-query'
 
 definePageMeta({ title: 'Worldline' })
@@ -12,6 +12,14 @@ const { data: sites, status, error, refetch } = useQuery<SiteList>({
 })
 const scanStore = useScanStore()
 const search = ref('')
+type StatusFilter = 'ALL' | 'OK' | 'No orders' | 'Fail'
+const selectedStatus = ref<StatusFilter>('ALL')
+const statusOptions: { label: string, value: StatusFilter }[] = [
+  { label: 'All statuses', value: 'ALL' },
+  { label: 'OK', value: 'OK' },
+  { label: 'No orders', value: 'No orders' },
+  { label: 'Fail', value: 'Fail' }
+]
 
 function decodeSiteTitle(title: string): string {
   const decoder = document.createElement('textarea')
@@ -28,6 +36,7 @@ const displaySites = computed(() => (sites.value ?? []).map(site => ({
 })))
 const filteredSites = computed(() => displaySites.value.filter(site =>
   `${site.siteTitle} ${site.siteUrl} ${site.server.name}`.toLowerCase().includes(search.value.toLowerCase())
+  && (selectedStatus.value === 'ALL' || getWorldlineDayStatus(site.worldlineStats?.days.find(day => day.daysAgo === 1)) === selectedStatus.value)
 ))
 const days = [1, 2, 3, 4, 5, 6, 7]
 async function refreshSites() { await refetch() }
@@ -53,6 +62,14 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
       </p>
       <div class="flex flex-wrap gap-3 items-center">
         <UInput v-model="search" icon="i-lucide-search" placeholder="Search sites or servers..." class="w-full sm:max-w-sm" />
+        <USelect
+          v-model="selectedStatus"
+          :items="statusOptions"
+          aria-label="Status"
+          title="Status for 1 day from the latest scan"
+          icon="i-lucide-filter"
+          class="w-full sm:w-48"
+        />
         <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="status === 'pending'" @click="refreshSites" />
       </div>
       <UAlert v-if="error" color="error" title="Could not load Worldline sites" :description="error.message" />
@@ -80,7 +97,7 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
           @click="scanStore.startWorldlineRecheck(row.original.id, row.original.serverId, () => refetch())"
         />
       </template>
-      <template #empty>No sites with the Worldline plugin found. Scan your servers to update the list.</template>
+      <template #empty>{{ sites?.length ? 'No sites match the selected filters.' : 'No sites with the Worldline plugin found. Scan your servers to update the list.' }}</template>
     </UTable>
   </NuxtLayout>
 </template>

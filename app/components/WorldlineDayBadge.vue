@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import type { WorldlineDay } from '../../shared/utils/siteHealth'
+import { getWorldlineDayStatus, type WorldlineDay } from '../../shared/utils/siteHealth'
 
 const props = defineProps<{ day?: WorldlineDay, error?: string | null }>()
-const label = computed(() => !props.day ? '?' : props.day.total === 0 ? '-' : props.day.captureStatus === 'captured' ? 'OK' : 'Fail')
+const label = computed(() => {
+  const status = getWorldlineDayStatus(props.day)
+  return status === 'No orders' ? '-' : status
+})
 const color = computed(() => label.value === '?' ? 'warning' : label.value === 'OK' ? 'success' : label.value === '-' ? 'neutral' : 'error')
 const tooltip = computed(() => {
   const day = props.day
