@@ -67,6 +67,8 @@ MHost is built for **digital sovereignty**. In an era of SaaS-dependency, MHost 
 
 ## Run with Docker Image
 
+Published Docker images support Linux AMD64 (x86_64).
+
 Pull and run the current image:
 
 ```bash
