@@ -107,8 +107,12 @@ its magic variables. You must set these if you are not running Coolify.
 
 ### Prerequisites
 
-- Node.js 24+
+- Node.js 26 (recommended; Node.js 24.15+ is also supported)
 - npm
+
+Use `nvm use` to select the project's recommended Node version. After changing Node
+major versions, run `npm ci` to reinstall native modules such as `better-sqlite3`.
+The Docker build and runtime both use Node.js 26.
 
 ### 1) Install dependencies
 

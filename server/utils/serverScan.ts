@@ -4,6 +4,7 @@ import { broadcastScanEvent, type BroadcastEvent } from '#server/utils/scanBroad
 import { getOrCreateMonitoringConfig } from '#server/utils/monitoring'
 import { sendNewSitesFoundReport, sendSiteHealthAlertReport, type NewSiteReportEntry } from '#server/utils/notificationReports'
 import { readCronHealth, readWorldlineHealth } from '#server/utils/siteHealthScan'
+import { readTurnstileHealth } from '#server/utils/turnstileScan'
 import { Prisma } from '@@/prisma/generated/client'
 import { associateCvesToSites } from '#server/utils/cveDatabase'
 import { validateAmazonSesCredentials } from '#server/utils/amazonSes'
@@ -497,6 +498,14 @@ async function scanInstallation(
       buildWpCliCommand(unixUser, wpDir, phpBinary, args, { skipPlugins: !loadPlugins }),
       { timeoutMs }
     )
+    sendEvent('log', `Reading Turnstile settings for ${siteTitle}...`)
+    const turnstileHealth = await readTurnstileHealth(healthExec)
+    if (turnstileHealth.turnstileScanError) sendEvent('error', `Failed to read Turnstile settings for ${siteTitle}: ${turnstileHealth.turnstileScanError}`)
+    await prisma.wordPressInstallation.update({
+      where: { id: installation.id },
+      data: { ...turnstileHealth, turnstileStats: turnstileHealth.turnstileStats ?? Prisma.DbNull }
+    })
+
     const cronHealth = await readCronHealth(healthExec)
     if (cronHealth.cronScanError) sendEvent('error', `Failed to read cron heartbeat for ${siteTitle}: ${cronHealth.cronScanError}`)
     await prisma.wordPressInstallation.update({ where: { id: installation.id }, data: cronHealth })

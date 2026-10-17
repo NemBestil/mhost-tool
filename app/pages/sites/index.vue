@@ -355,7 +355,7 @@ import type {TableColumn} from '@nuxt/ui'
 import {formatDistanceToNow} from 'date-fns'
 import {useQuery} from '@tanstack/vue-query'
 import type {TypedInternalResponse} from 'nitropack'
-import {refDebounced, useNow} from "@vueuse/core";
+import {refDebounced, useIntervalFn, useNow} from "@vueuse/core";
 import {getCronStatus} from '../../../shared/utils/siteHealth'
 
 const UCheckbox = resolveComponent('UCheckbox')
@@ -387,7 +387,7 @@ const sorting = ref([{id: 'siteTitle', desc: false}])
 
 const selectedServer = ref<{ label: string, value: string } | null>(null)
 const selectedStatus = ref<string | null>(null)
-const now = useNow({ interval: 60_000 })
+const now = useNow({ scheduler: update => useIntervalFn(update, 60_000) })
 const selectedCoreVersion = ref<string | null>(null)
 const showDevSites = ref(true)
 const isFilterDrawerOpen = ref(false)

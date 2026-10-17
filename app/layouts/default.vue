@@ -76,6 +76,11 @@ const links = computed<NavigationMenuItem[][]>(() => {
   )
 
   const plugins = [{
+    to: '/turnstile',
+    icon: 'i-lucide-shield-check',
+    label: 'Turnstile',
+    active: route.path.startsWith('/turnstile')
+  }, {
     to: '/worldline',
     icon: 'i-lucide-credit-card',
     label: 'Worldline',

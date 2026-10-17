@@ -85,6 +85,9 @@ model WordPressInstallation {
   worldlineStats               Json?
   worldlineCheckedAt           DateTime?
   worldlineScanError           String?
+  turnstileStats               Json?
+  turnstileCheckedAt           DateTime?
+  turnstileScanError           String?
   adminEmail                   String?
   adminEmailFromName           String?
   hasWooCommerce               Boolean           @default(false)

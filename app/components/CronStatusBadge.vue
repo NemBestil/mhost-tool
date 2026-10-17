@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useNow } from '@vueuse/core'
+import { useIntervalFn, useNow } from '@vueuse/core'
 import { getCronStatus } from '../../shared/utils/siteHealth'
 
 const props = defineProps<{
@@ -10,7 +10,7 @@ const props = defineProps<{
     cronScanError: string | null
   }
 }>()
-const now = useNow({ interval: 60_000 })
+const now = useNow({ scheduler: update => useIntervalFn(update, 60_000) })
 const status = computed(() => getCronStatus(props.site, now.value.getTime()))
 const colors = { ok: 'success', overdue: 'error', pending: 'warning', unknown: 'neutral' } as const
 const tooltip = computed(() => {
