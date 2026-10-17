@@ -21,7 +21,7 @@ echo wp_json_encode(array(
     'wordpressRegister' => (bool) get_option('cfturnstile_register'),
     'wordpressResetPassword' => (bool) get_option('cfturnstile_reset'),
     'woocommerceRegister' => (bool) get_option('cfturnstile_woo_register'),
-    'woocommerceAccountDetails' => (bool) get_option('cfturnstile_woo_account'),
+    'woocommerceResetPassword' => (bool) get_option('cfturnstile_woo_reset'),
     'cf7AllForms' => (bool) get_option('cfturnstile_cf7_all')
   )
 ));

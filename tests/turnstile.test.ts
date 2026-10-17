@@ -20,7 +20,7 @@ function report(): TurnstileReport {
     hasSiteKey: true, hasSecretKey: true, tested: true, retestRequired: false,
     checks: {
       wordpressRegister: false, wordpressResetPassword: false,
-      woocommerceRegister: false, woocommerceAccountDetails: false, cf7AllForms: false
+      woocommerceRegister: false, woocommerceResetPassword: false, cf7AllForms: false
     }
   }
 }
@@ -103,7 +103,7 @@ describe('Turnstile WordPress reader', { skip: !hasPhp }, () => {
     const value = read({
       cfturnstile_key: 'private-site-key', cfturnstile_secret: 'private-secret-key', cfturnstile_tested: 'yes',
       cfturnstile_register: 'on', cfturnstile_reset: 'on', cfturnstile_woo_register: 'on',
-      cfturnstile_woo_account: 'on', cfturnstile_cf7_all: 'on'
+      cfturnstile_woo_reset: 'on', cfturnstile_cf7_all: 'on'
     })
     assert.equal(getTurnstileCheckCount(value), 5)
     assert.ok(isTurnstileConfigured(value))
@@ -115,6 +115,16 @@ describe('Turnstile WordPress reader', { skip: !hasPhp }, () => {
     assert.ok(value.hasSiteKey && value.hasSecretKey)
     assert.equal(isTurnstileConfigured(value), false)
     assert.equal(getTurnstileCheckCount(value), 0)
+  })
+
+  it('counts WooCommerce reset password and ignores account details', () => {
+    const accountOnly = read({ cfturnstile_woo_account: 'on' })
+    assert.equal(accountOnly.checks.woocommerceResetPassword, false)
+    assert.equal(getTurnstileCheckCount(accountOnly), 0)
+
+    const resetOnly = read({ cfturnstile_woo_reset: 'on' })
+    assert.equal(resetOnly.checks.woocommerceResetPassword, true)
+    assert.equal(getTurnstileCheckCount(resetOnly), 1)
   })
 
   it('distinguishes missing and inactive plugins while still reading saved options', () => {

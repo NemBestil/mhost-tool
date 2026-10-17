@@ -16,18 +16,22 @@ const { data: sites, status, error, refetch, isFetching } = useQuery<TurnstileSi
   queryFn: () => useApiClient()('/turnstile/list')
 })
 const scanStore = useScanStore()
+const { data: setupSettings } = useSetupSettingsQuery()
 const search = ref('')
+const showDevSites = ref(true)
+const developmentSitePatterns = computed(() =>
+  (setupSettings.value?.developmentSites ?? '').toLowerCase().split(/\s+/).filter(Boolean)
+)
 const filteredSites = computed(() => (sites.value ?? []).filter(site =>
   `${site.siteTitle} ${site.siteUrl} ${site.server.name}`.toLowerCase().includes(search.value.trim().toLowerCase())
+  && (showDevSites.value || !developmentSitePatterns.value.some(pattern => site.siteUrl.toLowerCase().includes(pattern)))
 ))
 const columns: TableColumn<TurnstileSite>[] = [
-  { accessorKey: 'siteUrl', header: 'Domain' },
+  { accessorKey: 'siteTitle', header: 'Domain' },
   { id: 'server', header: 'Server' },
-  { id: 'installed', header: 'Plugin installed' },
-  { id: 'active', header: 'Plugin active' },
-  { id: 'configuration', header: 'Keys & validation' },
-  { id: 'checks', header: 'Important settings' },
-  { id: 'checkedAt', header: 'Last checked' },
+  { id: 'plugin', header: 'Plugin status' },
+  { id: 'configuration', header: 'Keys' },
+  { id: 'checks', header: 'Settings' },
   { id: 'actions', header: '' }
 ]
 const configurationChecks = [
@@ -38,6 +42,14 @@ const configurationChecks = [
 
 function domain(url: string): string {
   try { return new URL(url).host } catch { return url }
+}
+
+function decodeEntities(title: string): string {
+  const decoder = document.createElement('textarea')
+  return title.replace(/&(?:#\d+|#x[\da-f]+|[a-z][\da-z]+);/gi, entity => {
+    decoder.innerHTML = entity
+    return decoder.value
+  })
 }
 
 async function refreshSites() { await refetch() }
@@ -57,30 +69,32 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
       </p>
       <div class="flex flex-wrap items-center gap-3">
         <UInput v-model="search" icon="i-lucide-search" placeholder="Search domains or servers..." aria-label="Search domains or servers" size="lg" class="w-full sm:max-w-sm" />
+        <UCheckbox v-model="showDevSites" label="Dev-sites" size="lg" class="min-h-11 items-center" />
         <UButton label="Refresh list" icon="i-lucide-refresh-cw" color="neutral" variant="outline" size="lg" :loading="isFetching" @click="refreshSites" />
       </div>
       <UAlert v-if="error" color="error" title="Could not load Turnstile sites" :description="error.message" />
     </div>
 
     <UTable :data="filteredSites" :columns="columns" :loading="status === 'pending'" class="flex-1" :ui="{ th: 'whitespace-nowrap', td: 'whitespace-nowrap' }">
-      <template #siteUrl-cell="{ row }">
-        <div class="flex w-52 flex-col gap-1">
-          <NuxtLink :to="`/sites/${row.original.id}`" :title="row.original.siteUrl" class="truncate font-medium text-primary">{{ domain(row.original.siteUrl) }}</NuxtLink>
-          <a :href="row.original.siteUrl" target="_blank" rel="noopener noreferrer" class="truncate text-sm text-muted">{{ row.original.siteUrl }}</a>
+      <template #siteTitle-cell="{ row }">
+        <div class="flex flex-col">
+          <NuxtLink :to="`/sites/${row.original.id}`" :title="decodeEntities(row.original.siteTitle)" class="font-medium text-default hover:text-primary transition-colors cursor-pointer truncate w-full block">{{ decodeEntities(row.original.siteTitle) }}</NuxtLink>
+          <a :href="row.original.siteUrl" target="_blank" rel="noopener noreferrer" class="text-sm text-primary hover:underline">{{ row.original.siteUrl }}</a>
+          <p v-if="row.original.turnstileScanError" class="max-w-sm whitespace-normal text-sm text-error">{{ row.original.turnstileScanError }}</p>
         </div>
       </template>
       <template #server-cell="{ row }">
         <span :title="row.original.server.name" class="block max-w-32 truncate text-sm">{{ row.original.server.name }}</span>
       </template>
-      <template #installed-cell="{ row }">
-        <UBadge :color="!row.original.turnstileStats ? 'neutral' : row.original.turnstileStats.pluginInstalled ? 'success' : 'error'" variant="subtle" size="lg">
-          {{ !row.original.turnstileStats ? 'Unknown' : row.original.turnstileStats.pluginInstalled ? 'Yes' : 'No' }}
-        </UBadge>
-      </template>
-      <template #active-cell="{ row }">
-        <UBadge :color="!row.original.turnstileStats ? 'neutral' : row.original.turnstileStats.pluginIsActive ? 'success' : 'error'" variant="subtle" size="lg">
-          {{ !row.original.turnstileStats ? 'Unknown' : row.original.turnstileStats.pluginIsActive ? 'Yes' : 'No' }}
-        </UBadge>
+      <template #plugin-cell="{ row }">
+        <div class="flex flex-col items-start gap-1">
+          <UBadge :color="!row.original.turnstileStats ? 'neutral' : row.original.turnstileStats.pluginInstalled ? 'success' : 'error'" variant="subtle" size="lg">
+            {{ !row.original.turnstileStats ? 'Installed: ?' : row.original.turnstileStats.pluginInstalled ? 'Installed' : 'Not installed' }}
+          </UBadge>
+          <UBadge :color="!row.original.turnstileStats ? 'neutral' : row.original.turnstileStats.pluginIsActive ? 'success' : 'error'" variant="subtle" size="lg">
+            {{ !row.original.turnstileStats ? 'Active: ?' : row.original.turnstileStats.pluginIsActive ? 'Active' : 'Inactive' }}
+          </UBadge>
+        </div>
       </template>
       <template #configuration-cell="{ row }">
         <UPopover v-if="row.original.turnstileStats">
@@ -119,14 +133,8 @@ watch(() => scanStore.isScanning, (scanning, previous) => {
         </UPopover>
         <UBadge v-else color="neutral" variant="subtle" size="lg">Unknown</UBadge>
       </template>
-      <template #checkedAt-cell="{ row }">
-        <div class="max-w-64 space-y-1 text-sm whitespace-normal">
-          <span>{{ row.original.turnstileCheckedAt ? new Date(row.original.turnstileCheckedAt).toLocaleString() : 'Not checked yet' }}</span>
-          <p v-if="row.original.turnstileScanError" class="text-error">{{ row.original.turnstileScanError }}</p>
-        </div>
-      </template>
       <template #actions-cell="{ row }">
-        <UButton label="Scan site" icon="i-lucide-scan" color="neutral" variant="outline" size="lg" :disabled="scanStore.isServerScanning(row.original.serverId)" @click="scanStore.startSiteScan(row.original.id, row.original.serverId)" />
+        <UButton icon="i-lucide-refresh-cw" aria-label="Scan site" title="Scan site" color="neutral" variant="outline" size="lg" :disabled="scanStore.isServerScanning(row.original.serverId)" @click="scanStore.startSiteScan(row.original.id, row.original.serverId)" />
       </template>
       <template #empty>{{ sites?.length ? 'No sites match your search.' : 'No sites found. Scan your servers to populate the list.' }}</template>
     </UTable>

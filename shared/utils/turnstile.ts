@@ -4,7 +4,7 @@ export const turnstileChecks = [
   { key: 'wordpressRegister', label: 'WordPress Register' },
   { key: 'wordpressResetPassword', label: 'WordPress Reset Password' },
   { key: 'woocommerceRegister', label: 'WooCommerce Register' },
-  { key: 'woocommerceAccountDetails', label: 'WooCommerce Account Details' },
+  { key: 'woocommerceResetPassword', label: 'WooCommerce Reset Password' },
   { key: 'cf7AllForms', label: 'Enable on all CF7 Forms' }
 ] as const
 
@@ -19,7 +19,7 @@ export const turnstileReportSchema = z.object({
     wordpressRegister: z.boolean(),
     wordpressResetPassword: z.boolean(),
     woocommerceRegister: z.boolean(),
-    woocommerceAccountDetails: z.boolean(),
+    woocommerceResetPassword: z.boolean(),
     cf7AllForms: z.boolean()
   })
 })
